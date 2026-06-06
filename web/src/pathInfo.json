@@ -82,5 +82,6 @@
   "/src/plugin/uni/cms/components/PostStatusTag.vue": "PostStatusTag",
   "/src/plugin/uni/cms/components/TermSelector.vue": "TermSelector",
   "/src/plugin/uni/cms/view/posts.vue": "Posts",
-  "/src/plugin/uni/cms/view/site.vue": "Site"
+  "/src/plugin/uni/cms/view/site.vue": "Site",
+  "/src/plugin/uni/center/view/tenants.vue": "Tenants"
 }
