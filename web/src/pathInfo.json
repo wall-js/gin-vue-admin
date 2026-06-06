@@ -78,7 +78,9 @@
   "/src/plugin/announcement/form/info.vue": "InfoForm",
   "/src/plugin/announcement/view/info.vue": "Info",
   "/src/plugin/email/view/index.vue": "Email",
-  "/src/plugin/uni/console/view/index.vue": "Console",
-  "/src/plugin/uni/cms/view/page.vue": "CmsPage",
-  "/src/plugin/uni/cms/view/post.vue": "CmsPost"
+  "/src/plugin/uni/cms/components/I18nInput.vue": "I18nInput",
+  "/src/plugin/uni/cms/components/PostStatusTag.vue": "PostStatusTag",
+  "/src/plugin/uni/cms/components/TermSelector.vue": "TermSelector",
+  "/src/plugin/uni/cms/view/posts.vue": "Posts",
+  "/src/plugin/uni/cms/view/site.vue": "Site"
 }
