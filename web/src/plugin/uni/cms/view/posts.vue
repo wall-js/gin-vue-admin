@@ -78,6 +78,7 @@
       :title="dialogType === 'create' ? '新增文章' : '编辑文章'"
       size="70%"
       :close-on-click-modal="false"
+      destroy-on-close
     >
       <el-form ref="formRef" :model="formData" label-width="100px" v-loading="formLoading">
         <el-form-item label="标题" required>
@@ -93,7 +94,7 @@
         </el-form-item>
 
         <el-form-item label="内容">
-          <el-input v-model="i18n('content').value" type="textarea" :rows="8" placeholder="请输入内容" />
+          <RichEdit v-model="i18n('content').value" />
         </el-form-item>
 
         <el-divider content-position="left">发布设置</el-divider>
@@ -145,6 +146,7 @@ import { ElMessage } from 'element-plus'
 import PostStatusTag from '../components/PostStatusTag.vue'
 import TermSelector from '../components/TermSelector.vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
+import RichEdit from '@/components/richtext/rich-edit.vue'
 import { listPosts, getPost, createPost, updatePost, deletePost } from '../api/post.js'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
