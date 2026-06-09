@@ -1,33 +1,26 @@
 <template>
-  <div class="i18n-input">
-    <el-tabs v-model="activeLocale" type="border-card" class="i18n-tabs">
-      <el-tab-pane
-        v-for="locale in locales"
-        :key="locale"
-        :label="localeLabel(locale)"
-        :name="locale"
-      >
-        <el-input
-          v-if="type === 'textarea'"
-          type="textarea"
-          :rows="rows"
-          :model-value="getLocaleValue(locale)"
-          :placeholder="placeholder"
-          @update:model-value="(val) => updateLocaleValue(locale, val)"
-        />
-        <el-input
-          v-else
-          :model-value="getLocaleValue(locale)"
-          :placeholder="placeholder"
-          @update:model-value="(val) => updateLocaleValue(locale, val)"
-        />
-      </el-tab-pane>
-    </el-tabs>
+  <div class="i18n-input-single">
+    <div class="locale-label">{{ localeLabel }} ({{ activeLocale }})</div>
+    <el-input
+      v-if="type === 'textarea'"
+      type="textarea"
+      :rows="rows"
+      :model-value="currentValue"
+      :placeholder="placeholder"
+      @update:model-value="updateValue"
+    />
+    <el-input
+      v-else
+      :model-value="currentValue"
+      :placeholder="placeholder"
+      @update:model-value="updateValue"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { computed } from 'vue'
+import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
 const props = defineProps({
   modelValue: {
@@ -40,7 +33,7 @@ const props = defineProps({
   },
   type: {
     type: String,
-    default: 'text' // text | textarea
+    default: 'text'
   },
   rows: {
     type: Number,
@@ -54,9 +47,14 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const activeLocale = ref(props.locales[0] || 'zh')
+const cmsLocaleStore = useCmsLocaleStore()
 
-// 解析 I18nText：可能是 JSON 字符串或 Object
+// 当前编辑的语言（从全局 store 获取，降级到 locales prop）
+const activeLocale = computed(() => {
+  return cmsLocaleStore.activeLocale || props.locales[0] || 'zh'
+})
+
+// 解析 I18nText
 const parsedValue = computed(() => {
   if (!props.modelValue) return {}
   if (typeof props.modelValue === 'string') {
@@ -69,36 +67,28 @@ const parsedValue = computed(() => {
   return props.modelValue
 })
 
+// 当前语言的值
+const currentValue = computed(() => {
+  return parsedValue.value[activeLocale.value] || ''
+})
+
 const localeLabels = { zh: '中文', en: 'English', ar: 'العربية', ru: 'Русский' }
+const localeLabel = computed(() => localeLabels[activeLocale.value] || activeLocale.value.toUpperCase())
 
-const localeLabel = (locale) => localeLabels[locale] || locale.toUpperCase()
-
-const getLocaleValue = (locale) => {
-  return parsedValue.value[locale] || ''
-}
-
-const updateLocaleValue = (locale, val) => {
+const updateValue = (val) => {
   const newVal = { ...parsedValue.value }
-  newVal[locale] = val
+  newVal[activeLocale.value] = val
   emit('update:modelValue', newVal)
 }
-
-// 切换默认语言
-watch(() => props.locales, (newLocales) => {
-  if (newLocales.length > 0 && !newLocales.includes(activeLocale.value)) {
-    activeLocale.value = newLocales[0]
-  }
-})
 </script>
 
 <style scoped>
-.i18n-input {
+.i18n-input-single {
   width: 100%;
 }
-.i18n-tabs :deep(.el-tabs__content) {
-  padding: 8px;
-}
-.i18n-tabs :deep(.el-tab-pane) {
-  min-height: 32px;
+.locale-label {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 4px;
 }
 </style>

@@ -15,7 +15,7 @@ func Menu(ctx context.Context) {
 			Path:      "cms",
 			Name:      "cms",
 			Hidden:    false,
-			Component: "view/layout/index.vue",
+			Component: "view/routerHolder.vue",
 			Sort:      5,
 			Meta:      model.Meta{Title: "内容管理", Icon: "document"},
 		},

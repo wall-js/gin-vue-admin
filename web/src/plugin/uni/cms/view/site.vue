@@ -1,5 +1,7 @@
 <template>
   <div>
+    <LocaleSwitcher />
+
     <div class="gva-search-box">
       <div class="gva-table-box">
         <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
@@ -15,15 +17,15 @@
           <el-divider content-position="left">基本信息</el-divider>
 
           <el-form-item label="站点名称">
-            <I18nInput v-model="formData.name" :locales="siteLocales" placeholder="请输入站点名称" />
+            <el-input v-model="i18n('name').value" placeholder="请输入站点名称" />
           </el-form-item>
 
           <el-form-item label="站点描述">
-            <I18nInput v-model="formData.description" :locales="siteLocales" type="textarea" :rows="3" placeholder="请输入站点描述" />
+            <el-input v-model="i18n('description').value" type="textarea" :rows="3" placeholder="请输入站点描述" />
           </el-form-item>
 
           <el-form-item label="Logo URL">
-            <I18nInput v-model="formData.logoUrl" :locales="siteLocales" placeholder="请输入 Logo URL" />
+            <el-input v-model="i18n('logoUrl').value" placeholder="请输入 Logo URL" />
           </el-form-item>
 
           <el-form-item label="Favicon URL">
@@ -59,15 +61,15 @@
           <el-divider content-position="left">SEO 设置</el-divider>
 
           <el-form-item label="Meta Title">
-            <I18nInput v-model="formData.metaTitle" :locales="siteLocales" placeholder="请输入 SEO 标题" />
+            <el-input v-model="i18n('metaTitle').value" placeholder="请输入 SEO 标题" />
           </el-form-item>
 
           <el-form-item label="Meta Description">
-            <I18nInput v-model="formData.metaDescription" :locales="siteLocales" type="textarea" :rows="2" placeholder="请输入 SEO 描述" />
+            <el-input v-model="i18n('metaDescription').value" type="textarea" :rows="2" placeholder="请输入 SEO 描述" />
           </el-form-item>
 
           <el-form-item label="Meta Keywords">
-            <I18nInput v-model="formData.metaKeywords" :locales="siteLocales" placeholder="请输入 SEO 关键词" />
+            <el-input v-model="i18n('metaKeywords').value" placeholder="请输入 SEO 关键词" />
           </el-form-item>
 
           <!-- 站点状态 -->
@@ -88,8 +90,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import I18nInput from '../components/I18nInput.vue'
+import LocaleSwitcher from '../components/LocaleSwitcher.vue'
 import { getSite, updateSite, createDemoData } from '../api/site.js'
+import { useCmsLocaleStore } from '../store/cmsLocale.js'
+
+const cmsLocaleStore = useCmsLocaleStore()
 
 const pageLoading = ref(false)
 const saveLoading = ref(false)
@@ -122,7 +127,7 @@ const localesList = computed({
   }
 })
 
-const siteLocales = computed(() => localesList.value)
+const siteLocales = computed(() => cmsLocaleStore.availableLocales)
 
 // 解析 I18nText JSON 字符串为 Object
 const parseI18nField = (val) => {
@@ -135,6 +140,22 @@ const parseI18nField = (val) => {
     }
   }
   return val
+}
+
+// i18n 字段绑定：读写当前语言的值
+const i18n = (field) => {
+  return {
+    get value() {
+      const obj = formData.value[field]
+      return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
+    },
+    set value(val) {
+      if (!formData.value[field] || typeof formData.value[field] !== 'object') {
+        formData.value[field] = {}
+      }
+      formData.value[field][cmsLocaleStore.activeLocale] = val
+    }
+  }
 }
 
 // 加载站点配置
@@ -182,6 +203,8 @@ const handleSave = async () => {
     const res = await updateSite(data)
     if (res.code === 0) {
       ElMessage.success('保存成功')
+      // 刷新全局语言配置（可用语言可能已变更）
+      await cmsLocaleStore.refresh()
     } else {
       ElMessage.error(res.msg || '保存失败')
     }
@@ -221,6 +244,7 @@ const handleDemoData = async () => {
 
 onMounted(() => {
   loadSite()
+  cmsLocaleStore.init()
 })
 </script>
 

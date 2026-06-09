@@ -1,5 +1,7 @@
 <template>
   <div>
+    <LocaleSwitcher />
+
     <div class="gva-search-box">
       <!-- 搜索栏 -->
       <el-form :inline="true" :model="searchInfo" class="demo-form-inline">
@@ -79,7 +81,7 @@
     >
       <el-form ref="formRef" :model="formData" label-width="100px" v-loading="formLoading">
         <el-form-item label="标题" required>
-          <I18nInput v-model="formData.title" :locales="siteLocales" placeholder="请输入标题" />
+          <el-input v-model="i18n('title').value" placeholder="请输入标题" />
         </el-form-item>
 
         <el-form-item label="Slug" required>
@@ -87,11 +89,11 @@
         </el-form-item>
 
         <el-form-item label="摘要">
-          <I18nInput v-model="formData.excerpt" :locales="siteLocales" type="textarea" :rows="2" placeholder="请输入摘要" />
+          <el-input v-model="i18n('excerpt').value" type="textarea" :rows="2" placeholder="请输入摘要" />
         </el-form-item>
 
         <el-form-item label="内容">
-          <I18nInput v-model="formData.content" :locales="siteLocales" type="textarea" :rows="8" placeholder="请输入内容" />
+          <el-input v-model="i18n('content').value" type="textarea" :rows="8" placeholder="请输入内容" />
         </el-form-item>
 
         <el-divider content-position="left">发布设置</el-divider>
@@ -114,15 +116,15 @@
         <el-divider content-position="left">SEO 设置</el-divider>
 
         <el-form-item label="Meta Title">
-          <I18nInput v-model="formData.metaTitle" :locales="siteLocales" placeholder="SEO 标题" />
+          <el-input v-model="i18n('metaTitle').value" placeholder="SEO 标题" />
         </el-form-item>
 
         <el-form-item label="Meta Description">
-          <I18nInput v-model="formData.metaDescription" :locales="siteLocales" type="textarea" :rows="2" placeholder="SEO 描述" />
+          <el-input v-model="i18n('metaDescription').value" type="textarea" :rows="2" placeholder="SEO 描述" />
         </el-form-item>
 
         <el-form-item label="Meta Keywords">
-          <I18nInput v-model="formData.metaKeywords" :locales="siteLocales" placeholder="SEO 关键词" />
+          <el-input v-model="i18n('metaKeywords').value" placeholder="SEO 关键词" />
         </el-form-item>
       </el-form>
 
@@ -140,24 +142,27 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import I18nInput from '../components/I18nInput.vue'
 import PostStatusTag from '../components/PostStatusTag.vue'
 import TermSelector from '../components/TermSelector.vue'
+import LocaleSwitcher from '../components/LocaleSwitcher.vue'
 import { listPosts, getPost, createPost, updatePost, deletePost } from '../api/post.js'
-import { getSite } from '../api/site.js'
+import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
-// 解析 I18nText
+const cmsLocaleStore = useCmsLocaleStore()
+
+// 解析 I18nText，优先显示当前编辑语种的文本
 const getI18nText = (val) => {
   if (!val) return ''
+  const locale = cmsLocaleStore.activeLocale
   if (typeof val === 'string') {
     try {
       const obj = JSON.parse(val)
-      return obj.zh || obj.en || val
+      return obj[locale] || obj.zh || obj.en || val
     } catch {
       return val
     }
   }
-  return val.zh || val.en || ''
+  return val[locale] || val.zh || val.en || ''
 }
 
 // 解析 I18nText 为 Object
@@ -174,8 +179,21 @@ const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleString('zh-CN')
 }
 
-// 站点可用语言
-const siteLocales = ref(['zh', 'en'])
+// i18n 字段绑定：读写当前语言的值
+const i18n = (field) => {
+  return {
+    get value() {
+      const obj = formData.value[field]
+      return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
+    },
+    set value(val) {
+      if (!formData.value[field] || typeof formData.value[field] !== 'object') {
+        formData.value[field] = {}
+      }
+      formData.value[field][cmsLocaleStore.activeLocale] = val
+    }
+  }
+}
 
 // 搜索
 const searchInfo = ref({ search: '', status: undefined })
@@ -330,24 +348,11 @@ const handleDelete = async (row) => {
   }
 }
 
-// 加载站点语言配置
-const loadSiteLocales = async () => {
-  try {
-    const res = await getSite()
-    if (res.code === 0) {
-      const locales = res.data.locales
-      if (typeof locales === 'string') {
-        try { siteLocales.value = JSON.parse(locales) } catch { /* ignore */ }
-      } else if (Array.isArray(locales)) {
-        siteLocales.value = locales
-      }
-    }
-  } catch (e) { /* ignore */ }
-}
+// 加载站点语言配置（已迁移到 cmsLocaleStore）
 
 onMounted(() => {
   getTableData()
-  loadSiteLocales()
+  cmsLocaleStore.init()
 })
 </script>
 

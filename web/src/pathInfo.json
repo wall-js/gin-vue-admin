@@ -80,6 +80,7 @@
   "/src/plugin/email/view/index.vue": "Email",
   "/src/plugin/uni/center/view/tenants.vue": "Tenants",
   "/src/plugin/uni/cms/components/I18nInput.vue": "I18nInput",
+  "/src/plugin/uni/cms/components/LocaleSwitcher.vue": "LocaleSwitcher",
   "/src/plugin/uni/cms/components/PostStatusTag.vue": "PostStatusTag",
   "/src/plugin/uni/cms/components/TermSelector.vue": "TermSelector",
   "/src/plugin/uni/cms/view/posts.vue": "Posts",
