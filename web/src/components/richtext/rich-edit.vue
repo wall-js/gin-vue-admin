@@ -86,12 +86,7 @@
   watch(
     () => props.modelValue,
     (newVal) => {
-      const editor = editorRef.value
-      if (editor == null) return
-      // 使用编辑器 API 设置内容，避免触发 onChange 循环
-      if (editor.getHtml() !== newVal) {
-        editor.setHtml(newVal || '')
-      }
+      valueHtml.value = newVal || ''
     }
   )
 </script>

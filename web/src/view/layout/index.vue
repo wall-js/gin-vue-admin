@@ -41,7 +41,7 @@
               </transition>
             </div>
           </router-view>
-          <BottomInfo />
+          <!-- <BottomInfo /> -->
         </div>
       </div>
     </div>

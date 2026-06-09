@@ -78,7 +78,6 @@
       :title="dialogType === 'create' ? '新增文章' : '编辑文章'"
       size="70%"
       :close-on-click-modal="false"
-      destroy-on-close
     >
       <el-form ref="formRef" :model="formData" label-width="100px" v-loading="formLoading">
         <el-form-item label="标题" required>
@@ -94,7 +93,7 @@
         </el-form-item>
 
         <el-form-item label="内容">
-          <RichEdit v-model="i18n('content').value" />
+          <RichEdit v-if="dialogVisible" :key="editingId" v-model="i18n('content').value" />
         </el-form-item>
 
         <el-divider content-position="left">发布设置</el-divider>
@@ -174,6 +173,53 @@ const parseI18nField = (val) => {
     try { return JSON.parse(val) } catch { return {} }
   }
   return val
+}
+
+// ---- TipTap/ProseMirror JSON → HTML 转换 ----
+const convertNodeToHtml = (node) => {
+  if (!node) return ''
+  if (node.type === 'text') {
+    let t = (node.text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    for (const m of (node.marks || [])) {
+      if (m.type === 'bold') t = `<strong>${t}</strong>`
+      else if (m.type === 'italic') t = `<em>${t}</em>`
+      else if (m.type === 'underline') t = `<u>${t}</u>`
+      else if (m.type === 'strike') t = `<s>${t}</s>`
+      else if (m.type === 'code') t = `<code>${t}</code>`
+      else if (m.type === 'link') t = `<a href="${m.attrs?.href || ''}">${t}</a>`
+    }
+    return t
+  }
+  const inner = (node.content || []).map(convertNodeToHtml).join('')
+  switch (node.type) {
+    case 'doc': return inner
+    case 'paragraph': return `<p>${inner || '<br>'}</p>`
+    case 'heading': return `<h${node.attrs?.level || 1}>${inner}</h${node.attrs?.level || 1}>`
+    case 'bulletList': return `<ul>${inner}</ul>`
+    case 'orderedList': return `<ol>${inner}</ol>`
+    case 'listItem': return `<li>${inner}</li>`
+    case 'blockquote': return `<blockquote>${inner}</blockquote>`
+    case 'codeBlock': return `<pre><code>${inner}</code></pre>`
+    case 'hardBreak': return '<br>'
+    case 'horizontalRule': return '<hr>'
+    case 'image': return `<img src="${node.attrs?.src || ''}" alt="${node.attrs?.alt || ''}" />`
+    default: return inner
+  }
+}
+
+// 确保 i18n content 字段的每个语种值都是 HTML 字符串（处理 TipTap JSON 格式）
+const normalizeI18nContent = (parsed) => {
+  const result = {}
+  for (const [locale, val] of Object.entries(parsed || {})) {
+    if (typeof val === 'string') {
+      result[locale] = val
+    } else if (val && typeof val === 'object' && val.type) {
+      result[locale] = convertNodeToHtml(val)
+    } else {
+      result[locale] = ''
+    }
+  }
+  return result
 }
 
 const formatDate = (dateStr) => {
@@ -256,6 +302,7 @@ const formData = ref({
 })
 
 const resetForm = () => {
+  editingId.value = 0
   formData.value = {
     title: {},
     slug: '',
@@ -278,13 +325,14 @@ const openDialog = async (type, row) => {
     formLoading.value = true
     try {
       const res = await getPost(row.id)
+      console.log('[CMS] getPost response:', JSON.stringify(res))
       if (res.code === 0) {
         const d = res.data
         formData.value = {
           title: parseI18nField(d.title),
           slug: d.slug || '',
           excerpt: parseI18nField(d.excerpt),
-          content: parseI18nField(d.content),
+          content: normalizeI18nContent(parseI18nField(d.content)),
           status: d.status || 1,
           sortOrder: d.sortOrder || 0,
           termIds: d.termIds || [],
@@ -293,6 +341,7 @@ const openDialog = async (type, row) => {
           metaKeywords: parseI18nField(d.metaKeywords)
         }
         editingId.value = d.id
+        console.log('[CMS] formData set:', JSON.stringify(formData.value), 'locale:', cmsLocaleStore.activeLocale)
       }
     } catch (e) {
       console.error('加载文章详情失败:', e)
