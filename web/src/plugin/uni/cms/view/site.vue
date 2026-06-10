@@ -38,6 +38,7 @@
           <el-form-item label="默认语言">
             <el-select v-model="formData.locale" placeholder="请选择默认语言">
               <el-option label="中文" value="zh" />
+              <el-option label="繁體中文" value="zh-TW" />
               <el-option label="English" value="en" />
               <el-option label="العربية" value="ar" />
               <el-option label="Русский" value="ru" />
@@ -47,6 +48,7 @@
           <el-form-item label="可用语言">
             <el-select v-model="localesList" multiple placeholder="请选择可用语言">
               <el-option label="中文" value="zh" />
+              <el-option label="繁體中文" value="zh-TW" />
               <el-option label="English" value="en" />
               <el-option label="العربية" value="ar" />
               <el-option label="Русский" value="ru" />
@@ -73,6 +75,28 @@
           </el-form-item>
 
           <!-- 站点状态 -->
+          <el-divider content-position="left">站点设置</el-divider>
+
+          <el-form-item label="联系电话">
+            <el-input v-model="settingI18n('phone').value" placeholder="请输入联系电话" />
+          </el-form-item>
+
+          <el-form-item label="联系邮箱">
+            <el-input v-model="settingI18n('email').value" placeholder="请输入联系邮箱" />
+          </el-form-item>
+
+          <el-form-item label="地址">
+            <el-input v-model="settingI18n('address').value" placeholder="请输入地址" />
+          </el-form-item>
+
+          <el-form-item label="版权信息">
+            <el-input v-model="settingI18n('copyright').value" placeholder="请输入版权信息" />
+          </el-form-item>
+
+          <el-form-item label="Footer HTML">
+            <el-input v-model="settingI18n('footer_html').value" type="textarea" :rows="4" placeholder="请输入 Footer HTML 代码" />
+          </el-form-item>
+
           <el-divider content-position="left">其他设置</el-divider>
 
           <el-form-item label="站点状态">
@@ -111,6 +135,7 @@ const formData = ref({
   metaTitle: {},
   metaDescription: {},
   metaKeywords: {},
+  settingsJson: {},
   status: 1
 })
 
@@ -158,6 +183,30 @@ const i18n = (field) => {
   }
 }
 
+// settingsJson 嵌套 i18n 字段绑定：读写当前语言的某个设置项
+const settingI18n = (key) => {
+  return {
+    get value() {
+      const locale = cmsLocaleStore.activeLocale
+      const settings = formData.value.settingsJson
+      if (settings && settings[locale]) {
+        return settings[locale][key] || ''
+      }
+      return ''
+    },
+    set value(val) {
+      const locale = cmsLocaleStore.activeLocale
+      if (!formData.value.settingsJson || typeof formData.value.settingsJson !== 'object') {
+        formData.value.settingsJson = {}
+      }
+      if (!formData.value.settingsJson[locale]) {
+        formData.value.settingsJson[locale] = {}
+      }
+      formData.value.settingsJson[locale][key] = val
+    }
+  }
+}
+
 // 加载站点配置
 const loadSite = async () => {
   pageLoading.value = true
@@ -176,6 +225,7 @@ const loadSite = async () => {
         metaTitle: parseI18nField(data.metaTitle),
         metaDescription: parseI18nField(data.metaDescription),
         metaKeywords: parseI18nField(data.metaKeywords),
+        settingsJson: parseI18nField(data.settingsJson),
         status: data.status || 1
       }
     }
@@ -198,7 +248,8 @@ const handleSave = async () => {
       logoUrl: JSON.stringify(formData.value.logoUrl),
       metaTitle: JSON.stringify(formData.value.metaTitle),
       metaDescription: JSON.stringify(formData.value.metaDescription),
-      metaKeywords: JSON.stringify(formData.value.metaKeywords)
+      metaKeywords: JSON.stringify(formData.value.metaKeywords),
+      settingsJson: JSON.stringify(formData.value.settingsJson)
     }
     const res = await updateSite(data)
     if (res.code === 0) {

@@ -26,7 +26,7 @@ watch(() => cmsLocaleStore.activeLocale, (newVal) => {
   activeTab.value = newVal
 })
 
-const localeLabels = { zh: '中文', en: 'English', ar: 'العربية', ru: 'Русский' }
+const localeLabels = { zh: '中文', 'zh-TW': '繁體中文', en: 'English', ar: 'العربية', ru: 'Русский' }
 const localeLabel = (locale) => localeLabels[locale] || locale.toUpperCase()
 
 const handleTabChange = (locale) => {

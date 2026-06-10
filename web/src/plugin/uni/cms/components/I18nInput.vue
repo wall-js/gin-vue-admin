@@ -72,7 +72,7 @@ const currentValue = computed(() => {
   return parsedValue.value[activeLocale.value] || ''
 })
 
-const localeLabels = { zh: '中文', en: 'English', ar: 'العربية', ru: 'Русский' }
+const localeLabels = { zh: '中文', 'zh-TW': '繁體中文', en: 'English', ar: 'العربية', ru: 'Русский' }
 const localeLabel = computed(() => localeLabels[activeLocale.value] || activeLocale.value.toUpperCase())
 
 const updateValue = (val) => {
