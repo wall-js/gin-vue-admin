@@ -6,7 +6,6 @@ import (
 
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	model "github.com/flipped-aurora/gin-vue-admin/server/model/system"
-	"github.com/flipped-aurora/gin-vue-admin/server/plugin/plugin-tool/utils"
 )
 
 func Menu(ctx context.Context) {
@@ -67,32 +66,44 @@ func Menu(ctx context.Context) {
 		},
 	}
 
-	// Try batch registration (works on fresh installs)
-	utils.RegisterMenus(entities...)
-
-	// Fallback: ensure all child menus exist even if batch was skipped
-	// (RegisterMenus skips if ANY menu name already exists)
-	ensureChildMenus(entities)
+	// Idempotent: ensure all CMS menus exist.
+	// Each menu is checked individually — safe to run on both fresh and existing installs.
+	ensureAllMenus(entities)
 }
 
-// ensureChildMenus finds the parent "cms" menu and inserts any missing child menus,
-// then associates them with the admin authority (888) so they appear in the sidebar.
-func ensureChildMenus(entities []model.SysBaseMenu) {
+// ensureAllMenus ensures the parent "cms" menu and all child menus exist.
+func ensureAllMenus(entities []model.SysBaseMenu) {
 	db := global.GVA_DB
 	if db == nil {
 		return
 	}
 
-	// Find the parent cms menu
-	var parentMenu model.SysBaseMenu
-	if err := db.Where("name = ?", "cms").First(&parentMenu).Error; err != nil {
-		return
+	parentDef := entities[0]
+
+	// Deduplicate: if multiple parent menus with the same name exist, keep the oldest one
+	var parentMenus []model.SysBaseMenu
+	db.Where("name = ?", parentDef.Name).Order("id ASC").Find(&parentMenus)
+	if len(parentMenus) > 1 {
+		keeper := parentMenus[0]
+		for _, dup := range parentMenus[1:] {
+			db.Model(&model.SysBaseMenu{}).Where("parent_id = ?", dup.ID).Update("parent_id", keeper.ID)
+			db.Table("sys_authority_menus").Where("sys_base_menu_id = ?", fmt.Sprintf("%d", dup.ID)).Delete(nil)
+			db.Delete(&dup)
+			fmt.Printf("[uni] removed duplicate menu %s (id=%d), kept id=%d\n", dup.Name, dup.ID, keeper.ID)
+		}
 	}
 
-	// Collect all CMS menu IDs (parent + children) for authority association
-	cmsMenuIDs := []uint{parentMenu.ID}
+	// Ensure the parent cms menu exists
+	var parentMenu model.SysBaseMenu
+	if err := db.Where("name = ?", parentDef.Name).First(&parentMenu).Error; err != nil {
+		parentMenu = parentDef
+		if err := db.Create(&parentMenu).Error; err != nil {
+			fmt.Printf("[uni] failed to create parent menu %s: %v\n", parentDef.Name, err)
+			return
+		}
+	}
 
-	// Insert each child menu if it doesn't exist
+	// Ensure each child menu exists and is parented correctly
 	for _, m := range entities[1:] {
 		var existing model.SysBaseMenu
 		var count int64
@@ -101,29 +112,12 @@ func ensureChildMenus(entities []model.SysBaseMenu) {
 			m.ParentId = parentMenu.ID
 			if err := db.Create(&m).Error; err != nil {
 				fmt.Printf("[uni] failed to create menu %s: %v\n", m.Name, err)
-				continue
 			}
-			cmsMenuIDs = append(cmsMenuIDs, m.ID)
 		} else {
 			db.Where("name = ?", m.Name).First(&existing)
-			cmsMenuIDs = append(cmsMenuIDs, existing.ID)
-		}
-	}
-
-	// Associate all CMS menus with admin authority (888) if not already linked
-	adminAuthorityID := "888"
-	for _, menuID := range cmsMenuIDs {
-		menuIDStr := fmt.Sprintf("%d", menuID)
-		var linkCount int64
-		db.Table("sys_authority_menus").
-			Where("sys_authority_authority_id = ? AND sys_base_menu_id = ?", adminAuthorityID, menuIDStr).
-			Count(&linkCount)
-		if linkCount == 0 {
-			db.Table("sys_authority_menus").
-				Create(map[string]interface{}{
-					"sys_authority_authority_id": adminAuthorityID,
-					"sys_base_menu_id":           menuIDStr,
-				})
+			if existing.ParentId != parentMenu.ID {
+				db.Model(&existing).Update("parent_id", parentMenu.ID)
+			}
 		}
 	}
 }

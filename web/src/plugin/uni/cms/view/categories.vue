@@ -10,7 +10,6 @@
         </div>
 
         <el-table :data="terms" border style="width: 100%" v-loading="loading">
-          <el-table-column prop="id" label="ID" width="60" />
           <el-table-column label="名称" min-width="180">
             <template #default="{ row }">
               <span>{{ getI18nText(row.name) }}</span>

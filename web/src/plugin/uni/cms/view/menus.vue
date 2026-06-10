@@ -11,7 +11,6 @@
 
         <!-- 菜单容器列表 -->
         <el-table :data="containers" border style="width: 100%" v-loading="loading">
-          <el-table-column prop="id" label="ID" width="60" />
           <el-table-column label="名称" min-width="150">
             <template #default="{ row }">
               <span>{{ getI18nText(row.name) }}</span>
@@ -75,7 +74,6 @@
       </div>
 
       <el-table :data="currentItems" border style="width: 100%" v-loading="itemsLoading" row-key="id">
-        <el-table-column prop="id" label="ID" width="60" />
         <el-table-column label="名称" min-width="150">
           <template #default="{ row }">
             <span>{{ getI18nText(row.name) }}</span>
