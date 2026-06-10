@@ -35,16 +35,5 @@ func RunServer() {
 
 	address := fmt.Sprintf(":%d", global.GVA_CONFIG.System.Addr)
 
-	,
-		global.Translate("core.server.currentVersion"),
-		global.Version,
-		global.Translate("core.server.joinGroup"),
-		global.Translate("core.server.website"), global.Translate("core.server.pluginMarket"), global.Translate("core.server.community"), global.Translate("core.server.swagger"),
-		address, address, global.GVA_CONFIG.MCP.SSEPath, address, global.GVA_CONFIG.MCP.MessagePath,
-		global.Translate("core.server.frontend"),
-		global.Translate("core.server.copyright1"),
-		global.Translate("core.server.copyright2"),
-		global.Translate("core.server.copyright3"),
-		global.Translate("core.server.copyright4"))
 	initServer(address, Router, 10*time.Minute, 10*time.Minute)
 }

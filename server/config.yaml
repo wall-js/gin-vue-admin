@@ -89,7 +89,7 @@ jwt:
     buffer-time: 1d
     issuer: qmPlus
 language:
-    language: en
+    language: zh
     default-language: zh
     dir: ./resource/lang/
 local:
