@@ -106,7 +106,7 @@
         </el-form-item>
 
         <el-form-item label="分类">
-          <TermSelector v-model="formData.termIds" type="category" placeholder="选择分类" />
+          <CategoryTreeSelect v-model="formData.termIds" type="category" :multiple="true" placeholder="选择分类" />
         </el-form-item>
 
         <el-form-item label="排序">
@@ -143,7 +143,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import PostStatusTag from '../components/PostStatusTag.vue'
-import TermSelector from '../components/TermSelector.vue'
+import CategoryTreeSelect from '../components/CategoryTreeSelect.vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
 import RichEdit from '@/components/richtext/rich-edit.vue'
 import { listPosts, getPost, createPost, updatePost, deletePost } from '../api/post.js'

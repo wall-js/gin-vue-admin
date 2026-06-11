@@ -9,14 +9,22 @@
           <el-button type="primary" @click="openDialog('create')">新增{{ typeLabel }}</el-button>
         </div>
 
-        <el-table :data="terms" border style="width: 100%" v-loading="loading">
-          <el-table-column label="名称" min-width="180">
+        <el-table
+          :data="treeData"
+          border
+          row-key="id"
+          :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
+          default-expand-all
+          style="width: 100%"
+          v-loading="loading"
+        >
+          <el-table-column label="名称" min-width="200">
             <template #default="{ row }">
               <span>{{ getI18nText(row.name) }}</span>
             </template>
           </el-table-column>
           <el-table-column prop="slug" label="Slug" width="160" />
-          <el-table-column label="描述" min-width="200">
+          <el-table-column label="描述" min-width="180">
             <template #default="{ row }">
               <span>{{ getI18nText(row.description) || '-' }}</span>
             </template>
@@ -25,7 +33,7 @@
           <el-table-column label="操作" width="180" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link @click="openDialog('update', row)">编辑</el-button>
-              <el-popconfirm title="确定删除此条目？" @confirm="handleDelete(row)">
+              <el-popconfirm title="确定删除此条目及其子项？" @confirm="handleDelete(row)">
                 <template #reference>
                   <el-button type="danger" link>删除</el-button>
                 </template>
@@ -44,6 +52,14 @@
       :close-on-click-modal="false"
     >
       <el-form :model="formData" label-width="80px">
+        <el-form-item label="父级">
+          <CategoryTreeSelect
+            v-model="formData.parentId"
+            :type="props.termType"
+            :exclude-id="editingId"
+            placeholder="无（顶级）"
+          />
+        </el-form-item>
         <el-form-item label="名称" required>
           <el-input v-model="formI18n('name').value" :placeholder="`请输入${typeLabel}名称`" />
         </el-form-item>
@@ -69,6 +85,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
+import CategoryTreeSelect from '../components/CategoryTreeSelect.vue'
 import { listTerms, createTerm, updateTerm, deleteTerm } from '../api/term.js'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
@@ -118,14 +135,14 @@ const formI18n = (field) => {
 
 // ---- Term List ----
 const loading = ref(false)
-const terms = ref([])
+const flatTerms = ref([])
 
 const loadTerms = async () => {
   loading.value = true
   try {
     const res = await listTerms({ type: props.termType })
     if (res.code === 0) {
-      terms.value = res.data.list || []
+      flatTerms.value = res.data.list || []
     }
   } catch (e) {
     console.error(`加载${typeLabel.value}列表失败:`, e)
@@ -134,19 +151,47 @@ const loadTerms = async () => {
   }
 }
 
+// 将扁平列表构建为树
+const treeData = computed(() => {
+  const items = flatTerms.value
+  const map = {}
+  const roots = []
+  for (const item of items) {
+    map[item.id] = { ...item, children: [] }
+  }
+  for (const item of items) {
+    const node = map[item.id]
+    if (item.parentId && map[item.parentId]) {
+      map[item.parentId].children.push(node)
+    } else {
+      roots.push(node)
+    }
+  }
+  // 标记 hasChildren
+  const mark = (nodes) => {
+    for (const n of nodes) {
+      n.hasChildren = n.children.length > 0
+      if (n.hasChildren) mark(n.children)
+    }
+  }
+  mark(roots)
+  return roots
+})
+
 // ---- Dialog ----
 const dialogVisible = ref(false)
 const dialogType = ref('create')
 const editingId = ref(0)
-const formData = ref({ name: {}, slug: '', description: {}, sortOrder: 0 })
+const formData = ref({ parentId: 0, name: {}, slug: '', description: {}, sortOrder: 0 })
 
 const openDialog = (type, row) => {
   dialogType.value = type
   editingId.value = 0
-  formData.value = { name: {}, slug: '', description: {}, sortOrder: 0 }
+  formData.value = { parentId: 0, name: {}, slug: '', description: {}, sortOrder: 0 }
 
   if (type === 'update' && row) {
     formData.value = {
+      parentId: row.parentId || 0,
       name: parseI18nField(row.name),
       slug: row.slug || '',
       description: parseI18nField(row.description),
@@ -161,6 +206,7 @@ const handleSave = async () => {
   const data = {
     type: props.termType,
     ...formData.value,
+    parentId: formData.value.parentId || 0,
     name: JSON.stringify(formData.value.name),
     description: JSON.stringify(formData.value.description)
   }
