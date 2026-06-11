@@ -3,89 +3,210 @@
     <LocaleSwitcher />
 
     <div class="gva-search-box">
-      <div class="gva-table-box">
-        <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-          <h2 style="margin: 0;">{{ typeLabel }}管理</h2>
-          <el-button type="primary" @click="openDialog('create')">新增{{ typeLabel }}</el-button>
+      <div style="margin-bottom: 12px;">
+        <h2 style="margin: 0;">{{ typeLabel }}管理</h2>
+      </div>
+
+      <!-- 树形模式（分类） -->
+      <div v-if="hierarchical" class="tree-editor">
+        <!-- Left: Draggable Tree -->
+        <div class="tree-panel" v-loading="loading">
+          <div class="tree-toolbar">
+            <el-button type="primary" size="small" @click="handleAddRoot">
+              <el-icon style="margin-right: 4px;"><Plus /></el-icon>
+              新增顶级{{ typeLabel }}
+            </el-button>
+          </div>
+
+          <div class="tree-drop-zone">
+            <el-tree
+              ref="treeRef"
+              :data="treeData"
+              node-key="id"
+              default-expand-all
+              draggable
+              highlight-current
+              :expand-on-click-node="false"
+              :allow-drop="allowDrop"
+              @node-click="handleNodeClick"
+              @node-drop="handleNodeDrop"
+              v-loading="dragging"
+            >
+              <template #default="{ node, data }">
+                <div class="tree-node">
+                  <span class="node-label">{{ getI18nText(data.name) }}</span>
+                  <span class="node-slug">{{ data.slug }}</span>
+                  <span class="node-actions">
+                    <el-button
+                      v-if="node.level > 1"
+                      type="warning"
+                      link
+                      size="small"
+                      @click.stop="handlePromoteToRoot(data)"
+                      title="设为顶级"
+                    >
+                      <el-icon><Top /></el-icon>
+                    </el-button>
+                    <el-button type="primary" link size="small" @click.stop="handleAddChild(data)" title="添加子项">
+                      <el-icon><Plus /></el-icon>
+                    </el-button>
+                    <el-popconfirm
+                      :title="`确定删除「${getI18nText(data.name)}」及其子项？`"
+                      @confirm="handleDelete(data)"
+                    >
+                      <template #reference>
+                        <el-button type="danger" link size="small" @click.stop title="删除">
+                          <el-icon><Delete /></el-icon>
+                        </el-button>
+                      </template>
+                    </el-popconfirm>
+                  </span>
+                </div>
+              </template>
+            </el-tree>
+          </div>
+
+          <div v-if="!loading && treeData.length === 0" class="tree-empty">
+            <el-empty :description="`暂无${typeLabel}，点击上方按钮新增`" :image-size="60" />
+          </div>
         </div>
 
-        <el-table
-          :data="treeData"
-          border
-          row-key="id"
-          :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
-          default-expand-all
-          style="width: 100%"
-          v-loading="loading"
-        >
-          <el-table-column label="名称" min-width="200">
-            <template #default="{ row }">
-              <span>{{ getI18nText(row.name) }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="slug" label="Slug" width="160" />
-          <el-table-column label="描述" min-width="180">
-            <template #default="{ row }">
-              <span>{{ getI18nText(row.description) || '-' }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="sortOrder" label="排序" width="80" />
-          <el-table-column label="操作" width="180" fixed="right">
-            <template #default="{ row }">
-              <el-button type="primary" link @click="openDialog('update', row)">编辑</el-button>
-              <el-popconfirm title="确定删除此条目及其子项？" @confirm="handleDelete(row)">
-                <template #reference>
-                  <el-button type="danger" link>删除</el-button>
-                </template>
-              </el-popconfirm>
-            </template>
-          </el-table-column>
-        </el-table>
+        <!-- Right: Edit Panel -->
+        <div class="edit-panel" v-if="selectedNode">
+          <h3 style="margin: 0 0 16px 0;">编辑{{ typeLabel }}</h3>
+          <el-form :model="editForm" label-width="70px" size="default">
+            <el-form-item label="名称" required>
+              <el-input v-model="editName" :placeholder="`${typeLabel}名称`" />
+            </el-form-item>
+            <el-form-item label="Slug" required>
+              <el-input v-model="editForm.slug" placeholder="URL slug" />
+            </el-form-item>
+            <el-form-item label="描述">
+              <el-input v-model="editDescription" type="textarea" :rows="3" placeholder="可选描述" />
+            </el-form-item>
+            <el-form-item label="排序">
+              <el-input-number v-model="editForm.sortOrder" :min="0" />
+            </el-form-item>
+          </el-form>
+          <div class="edit-actions">
+            <el-button @click="clearSelection">取消</el-button>
+            <el-button type="primary" @click="handleSaveEdit" :loading="saving">保存</el-button>
+          </div>
+        </div>
+        <div class="edit-panel edit-placeholder" v-else>
+          <el-empty description="选择左侧节点进行编辑" :image-size="60" />
+        </div>
+      </div>
+
+      <!-- 扁平模式（标签） -->
+      <div v-else class="tree-editor">
+        <div class="tree-panel" v-loading="loading">
+          <div class="tree-toolbar">
+            <el-button type="primary" size="small" @click="handleAddRoot">
+              <el-icon style="margin-right: 4px;"><Plus /></el-icon>
+              新增{{ typeLabel }}
+            </el-button>
+          </div>
+
+          <div class="tree-drop-zone">
+            <el-tree
+              ref="flatTreeRef"
+              :data="flatTerms"
+              node-key="id"
+              draggable
+              highlight-current
+              :expand-on-click-node="false"
+              :allow-drop="flatAllowDrop"
+              @node-click="handleNodeClick"
+              @node-drop="handleFlatNodeDrop"
+            >
+              <template #default="{ node, data }">
+                <div class="tree-node">
+                  <span class="node-label">{{ getI18nText(data.name) }}</span>
+                  <span class="node-slug">{{ data.slug }}</span>
+                  <span class="node-actions">
+                    <el-popconfirm
+                      :title="`确定删除「${getI18nText(data.name)}」？`"
+                      @confirm="handleDelete(data)"
+                    >
+                      <template #reference>
+                        <el-button type="danger" link size="small" @click.stop title="删除">
+                          <el-icon><Delete /></el-icon>
+                        </el-button>
+                      </template>
+                    </el-popconfirm>
+                  </span>
+                </div>
+              </template>
+            </el-tree>
+          </div>
+
+          <div v-if="!loading && flatTerms.length === 0" class="tree-empty">
+            <el-empty :description="`暂无${typeLabel}，点击上方按钮新增`" :image-size="60" />
+          </div>
+        </div>
+
+        <div class="edit-panel" v-if="selectedNode">
+          <h3 style="margin: 0 0 16px 0;">编辑{{ typeLabel }}</h3>
+          <el-form :model="editForm" label-width="70px" size="default">
+            <el-form-item label="名称" required>
+              <el-input v-model="editName" :placeholder="`${typeLabel}名称`" />
+            </el-form-item>
+            <el-form-item label="Slug" required>
+              <el-input v-model="editForm.slug" placeholder="URL slug" />
+            </el-form-item>
+            <el-form-item label="描述">
+              <el-input v-model="editDescription" type="textarea" :rows="3" placeholder="可选描述" />
+            </el-form-item>
+            <el-form-item label="排序">
+              <el-input-number v-model="editForm.sortOrder" :min="0" />
+            </el-form-item>
+          </el-form>
+          <div class="edit-actions">
+            <el-button @click="clearSelection">取消</el-button>
+            <el-button type="primary" @click="handleSaveEdit" :loading="saving">保存</el-button>
+          </div>
+        </div>
+        <div class="edit-panel edit-placeholder" v-else>
+          <el-empty description="选择左侧标签进行编辑" :image-size="60" />
+        </div>
       </div>
     </div>
 
-    <!-- 编辑对话框 -->
+    <!-- Quick Create Dialog -->
     <el-dialog
-      v-model="dialogVisible"
-      :title="dialogType === 'create' ? `新增${typeLabel}` : `编辑${typeLabel}`"
-      width="550px"
+      v-model="createDialogVisible"
+      :title="`新增${typeLabel}`"
+      width="500px"
       :close-on-click-modal="false"
     >
-      <el-form :model="formData" label-width="80px">
-        <el-form-item label="父级">
-          <CategoryTreeSelect
-            v-model="formData.parentId"
-            :type="props.termType"
-            :exclude-id="editingId"
-            placeholder="无（顶级）"
-          />
-        </el-form-item>
+      <el-form :model="createForm" label-width="70px">
         <el-form-item label="名称" required>
-          <el-input v-model="formI18n('name').value" :placeholder="`请输入${typeLabel}名称`" />
+          <el-input v-model="createName" :placeholder="`${typeLabel}名称`" />
         </el-form-item>
         <el-form-item label="Slug" required>
-          <el-input v-model="formData.slug" placeholder="URL slug，如 tech-news" />
+          <el-input v-model="createForm.slug" placeholder="URL slug" />
         </el-form-item>
         <el-form-item label="描述">
-          <el-input v-model="formI18n('description').value" type="textarea" :rows="3" placeholder="可选描述" />
+          <el-input v-model="createDescription" type="textarea" :rows="2" placeholder="可选" />
         </el-form-item>
         <el-form-item label="排序">
-          <el-input-number v-model="formData.sortOrder" :min="0" />
+          <el-input-number v-model="createForm.sortOrder" :min="0" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">保存</el-button>
+        <el-button @click="createDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleCreate" :loading="saving">保存</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Plus, Delete, Top } from '@element-plus/icons-vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
-import CategoryTreeSelect from '../components/CategoryTreeSelect.vue'
 import { listTerms, createTerm, updateTerm, deleteTerm } from '../api/term.js'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
@@ -94,8 +215,8 @@ const props = defineProps({
 })
 
 const cmsLocaleStore = useCmsLocaleStore()
-
 const typeLabel = computed(() => props.termType === 'category' ? '分类' : '标签')
+const hierarchical = computed(() => props.termType === 'category')
 
 // ---- i18n helpers ----
 const getI18nText = (val) => {
@@ -104,7 +225,7 @@ const getI18nText = (val) => {
   if (typeof val === 'string') {
     try {
       const obj = JSON.parse(val)
-      return obj[locale] || obj.zh || obj.en || val
+      return obj[locale] || obj.zh || obj.en || ''
     } catch { return val }
   }
   return val[locale] || val.zh || val.en || ''
@@ -118,23 +239,9 @@ const parseI18nField = (val) => {
   return val
 }
 
-const formI18n = (field) => {
-  return {
-    get value() {
-      const obj = formData.value[field]
-      return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
-    },
-    set value(val) {
-      if (!formData.value[field] || typeof formData.value[field] !== 'object') {
-        formData.value[field] = {}
-      }
-      formData.value[field][cmsLocaleStore.activeLocale] = val
-    }
-  }
-}
-
-// ---- Term List ----
+// ---- Data ----
 const loading = ref(false)
+const dragging = ref(false)
 const flatTerms = ref([])
 
 const loadTerms = async () => {
@@ -151,7 +258,7 @@ const loadTerms = async () => {
   }
 }
 
-// 将扁平列表构建为树
+// Build tree from flat list
 const treeData = computed(() => {
   const items = flatTerms.value
   const map = {}
@@ -167,74 +274,323 @@ const treeData = computed(() => {
       roots.push(node)
     }
   }
-  // 标记 hasChildren
-  const mark = (nodes) => {
+  const clean = (nodes) => {
     for (const n of nodes) {
-      n.hasChildren = n.children.length > 0
-      if (n.hasChildren) mark(n.children)
+      if (n.children.length === 0) delete n.children
+      else clean(n.children)
     }
   }
-  mark(roots)
+  clean(roots)
   return roots
 })
 
-// ---- Dialog ----
-const dialogVisible = ref(false)
-const dialogType = ref('create')
-const editingId = ref(0)
-const formData = ref({ parentId: 0, name: {}, slug: '', description: {}, sortOrder: 0 })
+// ---- Tree ref & selection ----
+const treeRef = ref(null)
+const flatTreeRef = ref(null)
+const selectedId = ref(null)
 
-const openDialog = (type, row) => {
-  dialogType.value = type
-  editingId.value = 0
-  formData.value = { parentId: 0, name: {}, slug: '', description: {}, sortOrder: 0 }
+// 获取当前激活的 tree ref
+const activeTreeRef = computed(() => hierarchical.value ? treeRef.value : flatTreeRef.value)
 
-  if (type === 'update' && row) {
-    formData.value = {
-      parentId: row.parentId || 0,
-      name: parseI18nField(row.name),
-      slug: row.slug || '',
-      description: parseI18nField(row.description),
-      sortOrder: row.sortOrder || 0
-    }
-    editingId.value = row.id
-  }
-  dialogVisible.value = true
+const selectedNode = computed(() => {
+  if (!selectedId.value) return null
+  return flatTerms.value.find(t => t.id === selectedId.value) || null
+})
+
+const handleNodeClick = (data) => {
+  selectedId.value = data.id
 }
 
-const handleSave = async () => {
-  const data = {
-    type: props.termType,
-    ...formData.value,
-    parentId: formData.value.parentId || 0,
-    name: JSON.stringify(formData.value.name),
-    description: JSON.stringify(formData.value.description)
-  }
-  try {
-    let res
-    if (dialogType.value === 'create') {
-      res = await createTerm(data)
-    } else {
-      res = await updateTerm(editingId.value, data)
+const clearSelection = () => {
+  selectedId.value = null
+  if (treeRef.value) treeRef.value.setCurrentKey(null)
+  if (flatTreeRef.value) flatTreeRef.value.setCurrentKey(null)
+}
+
+// ---- Right panel edit form ----
+const editForm = ref({ name: {}, slug: '', description: {}, sortOrder: 0 })
+const saving = ref(false)
+
+const editName = computed({
+  get() {
+    const obj = editForm.value.name
+    return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
+  },
+  set(val) {
+    if (!editForm.value.name || typeof editForm.value.name !== 'object') {
+      editForm.value.name = {}
     }
+    editForm.value.name[cmsLocaleStore.activeLocale] = val
+  }
+})
+
+const editDescription = computed({
+  get() {
+    const obj = editForm.value.description
+    return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
+  },
+  set(val) {
+    if (!editForm.value.description || typeof editForm.value.description !== 'object') {
+      editForm.value.description = {}
+    }
+    editForm.value.description[cmsLocaleStore.activeLocale] = val
+  }
+})
+
+// Watch selectedNode and populate editForm
+watch(selectedNode, (node) => {
+  if (node) {
+    editForm.value = {
+      name: parseI18nField(node.name),
+      slug: node.slug || '',
+      description: parseI18nField(node.description),
+      sortOrder: node.sortOrder || 0
+    }
+  }
+})
+
+const handleSaveEdit = async () => {
+  if (!selectedId.value) return
+  saving.value = true
+  try {
+    const data = {
+      type: props.termType,
+      parentId: selectedNode.value?.parentId || 0,
+      name: JSON.stringify(editForm.value.name),
+      slug: editForm.value.slug,
+      description: JSON.stringify(editForm.value.description),
+      sortOrder: editForm.value.sortOrder
+    }
+    const res = await updateTerm(selectedId.value, data)
     if (res.code === 0) {
       ElMessage.success('保存成功')
-      dialogVisible.value = false
-      loadTerms()
+      await loadTerms()
+      await nextTick()
+      if (activeTreeRef.value && selectedId.value) {
+        activeTreeRef.value.setCurrentKey(selectedId.value)
+      }
     } else {
       ElMessage.error(res.msg || '保存失败')
     }
   } catch (e) {
     console.error('保存失败:', e)
+  } finally {
+    saving.value = false
   }
 }
 
-const handleDelete = async (row) => {
+// ---- Drag & Drop ----
+const allowDrop = (draggingNode, dropNode, type) => {
+  // 始终允许同级前后拖放（可用于提升为顶级）
+  return true
+}
+
+// 扁平模式：只允许 prev/next，禁止 inner（不允许嵌套）
+const flatAllowDrop = (draggingNode, dropNode, type) => {
+  return type !== 'inner'
+}
+
+const handleFlatNodeDrop = async (draggingNode, dropNode, dropType) => {
+  // 获取当前所有节点的顺序
+  const siblings = dropNode.parent?.childNodes || flatTreeRef.value?.store?.root?.childNodes || []
+  const updates = siblings.map((node, index) => ({
+    id: node.data.id,
+    sortOrder: index
+  }))
+
+  dragging.value = true
   try {
-    const res = await deleteTerm(row.id)
+    // 批量更新排序
+    await Promise.all(updates.map(u =>
+      updateTerm(u.id, {
+        type: props.termType,
+        parentId: 0,
+        sortOrder: u.sortOrder
+      })
+    ))
+    ElMessage.success('排序已更新')
+    await loadTerms()
+  } catch (e) {
+    console.error('拖拽排序失败:', e)
+    await loadTerms()
+  } finally {
+    dragging.value = false
+  }
+}
+
+const handleNodeDrop = async (draggingNode, dropNode, dropType) => {
+  // Determine new parentId
+  let newParentId = 0
+  if (dropType === 'inner') {
+    newParentId = dropNode.data.id
+  } else {
+    newParentId = dropNode.parent?.data?.id || 0
+  }
+
+  // Get siblings and compute sortOrder
+  const siblings = dropType === 'inner'
+    ? (dropNode.childNodes || [])
+    : (dropNode.parent?.childNodes || [])
+
+  const id = draggingNode.data.id
+  const newSort = siblings.findIndex(n => n.data.id === id)
+
+  const oldParentId = draggingNode.data.parentId || 0
+
+  dragging.value = true
+  try {
+    const data = {
+      type: props.termType,
+      parentId: newParentId,
+      name: typeof draggingNode.data.name === 'string'
+        ? draggingNode.data.name
+        : JSON.stringify(draggingNode.data.name || {}),
+      slug: draggingNode.data.slug || '',
+      description: typeof draggingNode.data.description === 'string'
+        ? draggingNode.data.description
+        : JSON.stringify(draggingNode.data.description || {}),
+      sortOrder: newSort >= 0 ? newSort : draggingNode.data.sortOrder || 0
+    }
+    const res = await updateTerm(id, data)
+    if (res.code === 0) {
+      ElMessage.success('层级已更新')
+      await loadTerms()
+      await nextTick()
+      if (activeTreeRef.value && selectedId.value) {
+        activeTreeRef.value.setCurrentKey(selectedId.value)
+      }
+    } else {
+      ElMessage.error(res.msg || '更新失败')
+      await loadTerms()
+    }
+  } catch (e) {
+    console.error('拖拽更新失败:', e)
+    await loadTerms()
+  } finally {
+    dragging.value = false
+  }
+}
+
+// ---- Create new ----
+const createDialogVisible = ref(false)
+const createForm = ref({ parentId: 0, name: {}, slug: '', description: {}, sortOrder: 0 })
+
+const createName = computed({
+  get() {
+    const obj = createForm.value.name
+    return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
+  },
+  set(val) {
+    if (!createForm.value.name || typeof createForm.value.name !== 'object') {
+      createForm.value.name = {}
+    }
+    createForm.value.name[cmsLocaleStore.activeLocale] = val
+  }
+})
+
+const createDescription = computed({
+  get() {
+    const obj = createForm.value.description
+    return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
+  },
+  set(val) {
+    if (!createForm.value.description || typeof createForm.value.description !== 'object') {
+      createForm.value.description = {}
+    }
+    createForm.value.description[cmsLocaleStore.activeLocale] = val
+  }
+})
+
+const handleAddRoot = () => {
+  createForm.value = { parentId: 0, name: {}, slug: '', description: {}, sortOrder: treeData.value.length }
+  createDialogVisible.value = true
+}
+
+const handleAddChild = (parentNode) => {
+  createForm.value = {
+    parentId: parentNode.id,
+    name: {},
+    slug: '',
+    description: {},
+    sortOrder: (parentNode.children || []).length
+  }
+  createDialogVisible.value = true
+}
+
+const handleCreate = async () => {
+  saving.value = true
+  try {
+    const data = {
+      type: props.termType,
+      ...createForm.value,
+      parentId: createForm.value.parentId || 0,
+      name: JSON.stringify(createForm.value.name),
+      description: JSON.stringify(createForm.value.description)
+    }
+    const res = await createTerm(data)
+    if (res.code === 0) {
+      ElMessage.success('创建成功')
+      createDialogVisible.value = false
+      await loadTerms()
+      // Auto-select the newly created node
+      await nextTick()
+      const items = flatTerms.value
+      if (items.length > 0) {
+        const newest = items[items.length - 1]
+        selectedId.value = newest.id
+        if (activeTreeRef.value) {
+          activeTreeRef.value.setCurrentKey(newest.id)
+        }
+      }
+    } else {
+      ElMessage.error(res.msg || '创建失败')
+    }
+  } catch (e) {
+    console.error('创建失败:', e)
+  } finally {
+    saving.value = false
+  }
+}
+
+// ---- Promote to Root ----
+const handlePromoteToRoot = async (data) => {
+  dragging.value = true
+  try {
+    const res = await updateTerm(data.id, {
+      type: props.termType,
+      parentId: 0,
+      name: typeof data.name === 'string' ? data.name : JSON.stringify(data.name || {}),
+      slug: data.slug || '',
+      description: typeof data.description === 'string' ? data.description : JSON.stringify(data.description || {}),
+      sortOrder: data.sortOrder || 0
+    })
+    if (res.code === 0) {
+      ElMessage.success(`已将「${getI18nText(data.name)}」设为顶级`)
+      await loadTerms()
+      await nextTick()
+      if (activeTreeRef.value && selectedId.value) {
+        activeTreeRef.value.setCurrentKey(selectedId.value)
+      }
+    } else {
+      ElMessage.error(res.msg || '操作失败')
+    }
+  } catch (e) {
+    console.error('设为顶级失败:', e)
+  } finally {
+    dragging.value = false
+  }
+}
+
+// ---- Delete ----
+const handleDelete = async (data) => {
+  try {
+    const res = await deleteTerm(data.id)
     if (res.code === 0) {
       ElMessage.success('删除成功')
-      loadTerms()
+      if (selectedId.value === data.id) {
+        selectedId.value = null
+      }
+      await loadTerms()
     } else {
       ElMessage.error(res.msg || '删除失败')
     }
@@ -254,11 +610,92 @@ onMounted(() => {
   padding: 20px;
   background: #fff;
   border-radius: 4px;
-  margin-bottom: 10px;
 }
-.gva-table-box {
-  padding: 20px;
-  background: #fff;
+
+.tree-editor {
+  display: flex;
+  gap: 20px;
+  min-height: 420px;
+}
+
+.tree-drop-zone {
+  min-height: 300px;
+  flex: 1;
+}
+
+.tree-panel {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--el-border-color-light, #e4e7ed);
   border-radius: 4px;
+  padding: 12px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-toolbar {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
+}
+
+.edit-panel {
+  width: 380px;
+  flex-shrink: 0;
+  border: 1px solid var(--el-border-color-light, #e4e7ed);
+  border-radius: 4px;
+  padding: 20px;
+  background: var(--el-fill-color-lighter, #f5f7fa);
+}
+
+.edit-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding-right: 8px;
+  font-size: 14px;
+}
+
+.node-label {
+  font-weight: 500;
+}
+
+.node-slug {
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 12px;
+}
+
+.node-actions {
+  margin-left: auto;
+  display: none;
+  gap: 2px;
+}
+
+.tree-node:hover .node-actions {
+  display: flex;
+}
+
+.tree-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 }
 </style>

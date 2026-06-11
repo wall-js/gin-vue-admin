@@ -106,7 +106,11 @@
         </el-form-item>
 
         <el-form-item label="分类">
-          <CategoryTreeSelect v-model="formData.termIds" type="category" :multiple="true" placeholder="选择分类" />
+          <CategoryTreeSelect v-model="formData.categoryIds" type="category" :multiple="true" placeholder="选择分类" />
+        </el-form-item>
+
+        <el-form-item label="标签">
+          <TermSelector v-model="formData.tagIds" type="tag" placeholder="选择标签" />
         </el-form-item>
 
         <el-form-item label="排序">
@@ -143,6 +147,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import PostStatusTag from '../components/PostStatusTag.vue'
+import TermSelector from '../components/TermSelector.vue'
 import CategoryTreeSelect from '../components/CategoryTreeSelect.vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
 import RichEdit from '@/components/richtext/rich-edit.vue'
@@ -158,7 +163,7 @@ const getI18nText = (val) => {
   if (typeof val === 'string') {
     try {
       const obj = JSON.parse(val)
-      return obj[locale] || obj.zh || obj.en || val
+      return obj[locale] || obj.zh || obj.en || ''
     } catch {
       return val
     }
@@ -295,7 +300,8 @@ const formData = ref({
   content: {},
   status: 1,
   sortOrder: 0,
-  termIds: [],
+  categoryIds: [],
+  tagIds: [],
   metaTitle: {},
   metaDescription: {},
   metaKeywords: {}
@@ -310,7 +316,8 @@ const resetForm = () => {
     content: {},
     status: 1,
     sortOrder: 0,
-    termIds: [],
+    categoryIds: [],
+    tagIds: [],
     metaTitle: {},
     metaDescription: {},
     metaKeywords: {}
@@ -335,7 +342,8 @@ const openDialog = async (type, row) => {
           content: normalizeI18nContent(parseI18nField(d.content)),
           status: d.status || 1,
           sortOrder: d.sortOrder || 0,
-          termIds: d.termIds || [],
+          categoryIds: d.categoryIds || [],
+          tagIds: d.tagIds || [],
           metaTitle: parseI18nField(d.metaTitle),
           metaDescription: parseI18nField(d.metaDescription),
           metaKeywords: parseI18nField(d.metaKeywords)

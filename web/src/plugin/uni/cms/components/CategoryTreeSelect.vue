@@ -1,5 +1,6 @@
 <template>
   <el-tree-select
+    v-if="loaded"
     v-model="selectedValue"
     :data="treeData"
     :props="treeProps"
@@ -49,6 +50,7 @@ const treeProps = {
 }
 
 const rawTerms = ref([])
+const loaded = ref(false)
 
 const selectedValue = computed({
   get() { return props.modelValue },
@@ -113,6 +115,8 @@ const loadTerms = async () => {
     }
   } catch (e) {
     console.error('加载分类/标签失败:', e)
+  } finally {
+    loaded.value = true
   }
 }
 

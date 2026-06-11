@@ -179,7 +179,7 @@ const getI18nText = (val) => {
   if (typeof val === 'string') {
     try {
       const obj = JSON.parse(val)
-      return obj[locale] || obj.zh || obj.en || val
+      return obj[locale] || obj.zh || obj.en || ''
     } catch { return val }
   }
   return val[locale] || val.zh || val.en || ''
