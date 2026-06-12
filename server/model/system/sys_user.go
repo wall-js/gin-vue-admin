@@ -12,6 +12,8 @@ type Login interface {
 	GetUUID() uuid.UUID
 	GetUserId() uint
 	GetAuthorityId() uint
+	GetTenantId() uint
+	GetSiteId() uint
 	GetUserInfo() any
 }
 
@@ -30,6 +32,8 @@ type SysUser struct {
 	Phone         string         `json:"phone"  gorm:"comment:用户手机号"`                                                                        // 用户手机号
 	Email         string         `json:"email"  gorm:"comment:用户邮箱"`                                                                         // 用户邮箱
 	Enable        int            `json:"enable" gorm:"default:1;comment:用户是否被冻结 1正常 2冻结"`                                                    //用户是否被冻结 1正常 2冻结
+	TenantId      uint           `json:"tenantId" gorm:"default:0;comment:租户ID,0=平台超管"`                                              // 租户ID
+	SiteId        uint           `json:"siteId" gorm:"default:0;comment:站点ID,0=不限站点"`                                                  // 站点ID
 	OriginSetting common.JSONMap `json:"originSetting" form:"originSetting" gorm:"type:text;default:null;column:origin_setting;comment:配置;"` //配置
 }
 
@@ -55,6 +59,14 @@ func (s *SysUser) GetUserId() uint {
 
 func (s *SysUser) GetAuthorityId() uint {
 	return s.AuthorityId
+}
+
+func (s *SysUser) GetTenantId() uint {
+	return s.TenantId
+}
+
+func (s *SysUser) GetSiteId() uint {
+	return s.SiteId
 }
 
 func (s *SysUser) GetUserInfo() any {

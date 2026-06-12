@@ -142,6 +142,8 @@ func LoginToken(user system.Login) (token string, claims systemReq.CustomClaims,
 		NickName:    user.GetNickname(),
 		Username:    user.GetUsername(),
 		AuthorityId: user.GetAuthorityId(),
+		TenantId:    user.GetTenantId(),
+		SiteId:      user.GetSiteId(),
 	})
 	token, err = j.CreateToken(claims)
 	return

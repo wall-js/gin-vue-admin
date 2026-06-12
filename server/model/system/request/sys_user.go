@@ -16,6 +16,8 @@ type Register struct {
 	AuthorityIds []uint `json:"authorityIds" swaggertype:"string" example:"[]uint 角色id"`
 	Phone        string `json:"phone" example:"电话号码"`
 	Email        string `json:"email" example:"电子邮箱"`
+	TenantId     uint   `json:"tenantId" swaggertype:"string" example:"int 租户ID,0=平台超管"`
+	SiteId       uint   `json:"siteId" swaggertype:"string" example:"int 站点ID,0=不限站点"`
 }
 
 // Login User login structure
