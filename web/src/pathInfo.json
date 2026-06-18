@@ -88,5 +88,6 @@
   "/src/plugin/uni/cms/view/menus.vue": "Menus",
   "/src/plugin/uni/cms/view/posts.vue": "Posts",
   "/src/plugin/uni/cms/view/site.vue": "Site",
+  "/src/plugin/uni/cms/view/sites.vue": "Sites",
   "/src/plugin/uni/cms/view/tags.vue": "Tags"
 }

@@ -32,6 +32,17 @@
             <el-input v-model="formData.faviconUrl" placeholder="请输入 Favicon URL" />
           </el-form-item>
 
+          <el-form-item label="绑定域名">
+            <el-input v-model="formData.domain" placeholder="例如: www.example.com">
+              <template #prepend>
+                <el-icon><Link /></el-icon>
+              </template>
+            </el-input>
+            <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+              绑定域名后，用户访问该域名时将自动加载此站点内容
+            </div>
+          </el-form-item>
+
           <!-- 语言设置 -->
           <el-divider content-position="left">语言设置</el-divider>
 
@@ -114,6 +125,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Link } from '@element-plus/icons-vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
 import { getSite, updateSite, createDemoData } from '../api/site.js'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
@@ -129,6 +141,7 @@ const formData = ref({
   description: {},
   logoUrl: {},
   faviconUrl: '',
+  domain: '',
   locale: 'zh',
   locales: '["zh","en"]',
   template: 'default',
@@ -219,6 +232,7 @@ const loadSite = async () => {
         description: parseI18nField(data.description),
         logoUrl: parseI18nField(data.logoUrl),
         faviconUrl: data.faviconUrl || '',
+        domain: data.domain || '',
         locale: data.locale || 'zh',
         locales: data.locales || '["zh","en"]',
         template: data.template || 'default',

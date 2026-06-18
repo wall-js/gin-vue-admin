@@ -19,3 +19,8 @@ export const updateMenuItem = (id, data) => cmsPut(`/menu-items/${id}`, data)
 export const deleteMenuItem = (id) => cmsDelete(`/menu-items/${id}`)
 
 export const reorderMenuItems = (menuId, ids) => cmsPut(`/menus/${menuId}/reorder`, { ids })
+
+// Menu Tree (unified tree API)
+export const getMenuTree = () => cmsGet('/menu-tree')
+
+export const batchReorderMenu = (moves) => cmsPut('/menu-tree/reorder', { moves })

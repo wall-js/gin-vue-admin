@@ -10,13 +10,17 @@ const cmsService = axios.create({
   timeout: 30000
 })
 
-// 请求拦截：注入 x-token（与 GVA 共用同一 token，signing key 已统一）
+// CMS 请求拦截：注入 x-token 和 X-Admin-Site-Id
+// X-Admin-Site-Id 从 localStorage 读取，支持超管跨站点切换
+// 网关会覆盖 X-Site-Id（域名解析结果），但不会识别 X-Admin-Site-Id
 cmsService.interceptors.request.use(
   (config) => {
     const userStore = useUserStore()
+    const siteId = localStorage.getItem('cms_site_id')
     config.headers = {
       'Content-Type': 'application/json',
       'x-token': userStore.token,
+      ...(siteId ? { 'X-Admin-Site-Id': siteId } : {}),
       ...config.headers
     }
     return config

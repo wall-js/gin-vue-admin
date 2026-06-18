@@ -3,135 +3,202 @@
     <LocaleSwitcher />
 
     <div class="gva-search-box">
-      <div class="gva-table-box">
-        <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-          <h2 style="margin: 0;">菜单管理</h2>
-          <el-button type="primary" @click="openContainerDialog('create')">新增菜单容器</el-button>
+      <div style="margin-bottom: 12px;">
+        <h2 style="margin: 0;">菜单管理</h2>
+      </div>
+
+      <div class="tree-editor">
+        <!-- Left: Draggable Tree -->
+        <div class="tree-panel" v-loading="loading">
+          <div class="tree-toolbar">
+            <el-button type="primary" size="small" @click="openCreateContainerDialog">
+              <el-icon style="margin-right: 4px;"><Plus /></el-icon>
+              新增菜单容器
+            </el-button>
+          </div>
+
+          <div class="tree-drop-zone">
+            <el-tree
+              ref="treeRef"
+              :data="treeData"
+              node-key="id"
+              default-expand-all
+              draggable
+              highlight-current
+              :expand-on-click-node="false"
+              :allow-drop="allowDrop"
+              @node-click="handleNodeClick"
+              @node-drop="handleNodeDrop"
+              v-loading="dragging"
+            >
+              <template #default="{ node, data }">
+                <div class="tree-node">
+                  <span class="node-label">{{ getI18nText(data.name) }}</span>
+                  <el-tag v-if="data.isContainer" size="small" type="info" class="node-tag">{{ data.slug }}</el-tag>
+                  <el-tag v-else size="small" class="node-tag">{{ getItemMeta(data.metaJson).type || 'url' }}</el-tag>
+                  <span v-if="!data.isContainer" class="node-url">{{ getItemMeta(data.metaJson).url || '' }}</span>
+                  <span class="node-actions">
+                    <el-button
+                      v-if="data.isContainer"
+                      type="primary"
+                      link
+                      size="small"
+                      @click.stop="handleAddItem(data)"
+                      title="添加菜单项"
+                    >
+                      <el-icon><Plus /></el-icon>
+                    </el-button>
+                    <el-button
+                      v-if="!data.isContainer"
+                      type="primary"
+                      link
+                      size="small"
+                      @click.stop="handleAddChild(data)"
+                      title="添加子项"
+                    >
+                      <el-icon><Plus /></el-icon>
+                    </el-button>
+                    <el-popconfirm
+                      :title="`确定删除「${getI18nText(data.name)}」？`"
+                      @confirm="handleDelete(data)"
+                    >
+                      <template #reference>
+                        <el-button type="danger" link size="small" @click.stop title="删除">
+                          <el-icon><Delete /></el-icon>
+                        </el-button>
+                      </template>
+                    </el-popconfirm>
+                  </span>
+                </div>
+              </template>
+            </el-tree>
+          </div>
+
+          <div v-if="!loading && treeData.length === 0" class="tree-empty">
+            <el-empty description="暂无菜单容器，点击上方按钮新增" :image-size="60" />
+          </div>
         </div>
 
-        <!-- 菜单容器列表 -->
-        <el-table :data="containers" border style="width: 100%" v-loading="loading">
-          <el-table-column label="名称" min-width="150">
-            <template #default="{ row }">
-              <span>{{ getI18nText(row.name) }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="slug" label="Slug (渲染位置)" width="160" />
-          <el-table-column prop="sortOrder" label="排序" width="80" />
-          <el-table-column label="菜单项数" width="100">
-            <template #default="{ row }">
-              <el-tag size="small">{{ (row.items || []).length }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="280" fixed="right">
-            <template #default="{ row }">
-              <el-button type="primary" link @click="openItemsDialog(row)">管理菜单项</el-button>
-              <el-button type="primary" link @click="openContainerDialog('update', row)">编辑</el-button>
-              <el-popconfirm title="确定删除此菜单容器？" @confirm="handleDeleteContainer(row)">
-                <template #reference>
-                  <el-button type="danger" link>删除</el-button>
-                </template>
-              </el-popconfirm>
-            </template>
-          </el-table-column>
-        </el-table>
+        <!-- Right: Edit Panel -->
+        <div class="edit-panel" v-if="selectedNode">
+          <!-- Container Edit Form -->
+          <template v-if="selectedNode.isContainer">
+            <h3 style="margin: 0 0 16px 0;">编辑菜单容器</h3>
+            <el-form :model="containerEditForm" label-width="80px" size="default">
+              <el-form-item label="名称" required>
+                <el-input v-model="containerEditName" placeholder="如：主导航、页脚链接" />
+              </el-form-item>
+              <el-form-item label="渲染位置" required>
+                <el-select v-model="containerEditForm.slug" filterable allow-create placeholder="选择或输入渲染位置">
+                  <el-option label="main - 主导航" value="main" />
+                  <el-option label="footer - 页脚链接" value="footer" />
+                  <el-option label="external - 外部链接" value="external" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="排序">
+                <el-input-number v-model="containerEditForm.sortOrder" :min="0" />
+              </el-form-item>
+            </el-form>
+            <div class="edit-actions">
+              <el-button @click="clearSelection">取消</el-button>
+              <el-button type="primary" @click="handleSaveContainer" :loading="saving">保存</el-button>
+            </div>
+          </template>
+
+          <!-- Item Edit Form -->
+          <template v-else>
+            <h3 style="margin: 0 0 16px 0;">编辑菜单项</h3>
+            <el-form :model="itemEditForm" label-width="80px" size="default">
+              <el-form-item label="名称" required>
+                <el-input v-model="itemEditName" placeholder="菜单项显示名称" />
+              </el-form-item>
+              <el-form-item label="Slug" required>
+                <el-input v-model="itemEditForm.slug" placeholder="URL slug" />
+              </el-form-item>
+
+              <el-divider content-position="left">链接配置</el-divider>
+
+              <el-form-item label="类型">
+                <el-select v-model="itemEditMeta.type" placeholder="选择类型">
+                  <el-option label="自定义URL" value="url" />
+                  <el-option label="页面" value="page" />
+                  <el-option label="文章" value="post" />
+                  <el-option label="分类" value="category" />
+                  <el-option label="标签" value="tag" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="URL">
+                <el-input v-model="itemEditMeta.url" placeholder="链接地址，如 /about" />
+              </el-form-item>
+              <el-form-item label="打开方式">
+                <el-select v-model="itemEditMeta.target">
+                  <el-option label="当前窗口" value="_self" />
+                  <el-option label="新窗口" value="_blank" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="排序">
+                <el-input-number v-model="itemEditForm.sortOrder" :min="0" />
+              </el-form-item>
+            </el-form>
+            <div class="edit-actions">
+              <el-button @click="clearSelection">取消</el-button>
+              <el-button type="primary" @click="handleSaveItem" :loading="saving">保存</el-button>
+            </div>
+          </template>
+        </div>
+        <div class="edit-panel edit-placeholder" v-else>
+          <el-empty description="选择左侧节点进行编辑" :image-size="60" />
+        </div>
       </div>
     </div>
 
-    <!-- 容器编辑对话框 -->
+    <!-- Create Container Dialog -->
     <el-dialog
-      v-model="containerDialogVisible"
-      :title="containerDialogType === 'create' ? '新增菜单容器' : '编辑菜单容器'"
+      v-model="createContainerVisible"
+      title="新增菜单容器"
       width="500px"
       :close-on-click-modal="false"
     >
-      <el-form :model="containerForm" label-width="80px">
+      <el-form :model="createForm" label-width="80px">
         <el-form-item label="名称" required>
-          <el-input v-model="containerI18n('name').value" placeholder="如：主导航、页脚链接" />
+          <el-input v-model="createContainerName" placeholder="如：主导航、页脚链接" />
         </el-form-item>
-        <el-form-item label="Slug" required>
-          <el-input v-model="containerForm.slug" placeholder="如：main、footer、external" />
+        <el-form-item label="渲染位置" required>
+          <el-select v-model="createForm.slug" filterable allow-create placeholder="选择或输入渲染位置">
+            <el-option label="main - 主导航" value="main" />
+            <el-option label="footer - 页脚链接" value="footer" />
+            <el-option label="external - 外部链接" value="external" />
+          </el-select>
         </el-form-item>
         <el-form-item label="排序">
-          <el-input-number v-model="containerForm.sortOrder" :min="0" />
+          <el-input-number v-model="createForm.sortOrder" :min="0" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="containerDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveContainer">保存</el-button>
+        <el-button @click="createContainerVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleCreateContainer" :loading="saving">保存</el-button>
       </template>
     </el-dialog>
 
-    <!-- 菜单项管理抽屉 -->
-    <el-drawer
-      v-model="itemsDrawerVisible"
-      :title="`管理菜单项 - ${currentContainer ? getI18nText(currentContainer.name) : ''}`"
-      size="60%"
-      :close-on-click-modal="false"
-    >
-      <div style="margin-bottom: 12px;">
-        <el-button type="primary" @click="openItemDialog('create')">新增菜单项</el-button>
-      </div>
-
-      <el-table :data="currentItems" border style="width: 100%" v-loading="itemsLoading" row-key="id">
-        <el-table-column label="名称" min-width="150">
-          <template #default="{ row }">
-            <span>{{ getI18nText(row.name) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="slug" label="Slug" width="120" />
-        <el-table-column label="类型" width="80">
-          <template #default="{ row }">
-            <el-tag size="small">{{ getItemMeta(row.metaJson).type || '-' }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="URL" min-width="150">
-          <template #default="{ row }">
-            <span>{{ getItemMeta(row.metaJson).url || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="sortOrder" label="排序" width="70" />
-        <el-table-column label="操作" width="200" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="openItemDialog('update', row)">编辑</el-button>
-            <el-popconfirm title="确定删除此菜单项？" @confirm="handleDeleteItem(row)">
-              <template #reference>
-                <el-button type="danger" link>删除</el-button>
-              </template>
-            </el-popconfirm>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div style="margin-top: 16px;" v-if="currentItems.length > 1">
-        <el-divider content-position="left">排序调整</el-divider>
-        <p style="color: #909399; font-size: 12px;">拖动上方表格行调整顺序（或在下方手动输入 ID 顺序）</p>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <el-input v-model="reorderIdsStr" placeholder="输入 ID 顺序，逗号分隔，如: 3,1,2" />
-          <el-button type="primary" @click="handleReorder">保存排序</el-button>
-        </div>
-      </div>
-    </el-drawer>
-
-    <!-- 菜单项编辑对话框 -->
+    <!-- Create Item Dialog -->
     <el-dialog
-      v-model="itemDialogVisible"
-      :title="itemDialogType === 'create' ? '新增菜单项' : '编辑菜单项'"
+      v-model="createItemVisible"
+      :title="createItemTitle"
       width="550px"
       :close-on-click-modal="false"
     >
-      <el-form :model="itemForm" label-width="80px">
+      <el-form :model="createItemForm" label-width="80px">
         <el-form-item label="名称" required>
-          <el-input v-model="itemI18n('name').value" placeholder="菜单项显示名称" />
+          <el-input v-model="createItemName" placeholder="菜单项显示名称" />
         </el-form-item>
         <el-form-item label="Slug" required>
-          <el-input v-model="itemForm.slug" placeholder="URL slug" />
+          <el-input v-model="createItemForm.slug" placeholder="URL slug" />
         </el-form-item>
 
         <el-divider content-position="left">链接配置</el-divider>
 
         <el-form-item label="类型">
-          <el-select v-model="itemMeta.type" placeholder="选择类型">
+          <el-select v-model="createItemMeta.type" placeholder="选择类型">
             <el-option label="自定义URL" value="url" />
             <el-option label="页面" value="page" />
             <el-option label="文章" value="post" />
@@ -140,33 +207,35 @@
           </el-select>
         </el-form-item>
         <el-form-item label="URL">
-          <el-input v-model="itemMeta.url" placeholder="链接地址，如 /about" />
+          <el-input v-model="createItemMeta.url" placeholder="链接地址，如 /about" />
         </el-form-item>
         <el-form-item label="打开方式">
-          <el-select v-model="itemMeta.target">
+          <el-select v-model="createItemMeta.target">
             <el-option label="当前窗口" value="_self" />
             <el-option label="新窗口" value="_blank" />
           </el-select>
         </el-form-item>
         <el-form-item label="排序">
-          <el-input-number v-model="itemForm.sortOrder" :min="0" />
+          <el-input-number v-model="createItemForm.sortOrder" :min="0" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="itemDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveItem">保存</el-button>
+        <el-button @click="createItemVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleCreateItem" :loading="saving">保存</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Plus, Delete } from '@element-plus/icons-vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
 import {
-  listMenuContainers, getMenuContainer, createMenuContainer, updateMenuContainer, deleteMenuContainer,
-  createMenuItem, updateMenuItem, deleteMenuItem, reorderMenuItems
+  getMenuTree, batchReorderMenu,
+  createMenuContainer, updateMenuContainer, deleteMenuContainer,
+  createMenuItem, updateMenuItem, deleteMenuItem
 } from '../api/menu.js'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
@@ -193,221 +262,380 @@ const parseI18nField = (val) => {
   return val
 }
 
-const i18nBind = (formRef, field) => {
-  return {
-    get value() {
-      const obj = formRef.value[field]
-      return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
-    },
-    set value(val) {
-      if (!formRef.value[field] || typeof formRef.value[field] !== 'object') {
-        formRef.value[field] = {}
-      }
-      formRef.value[field][cmsLocaleStore.activeLocale] = val
-    }
-  }
-}
-
-// ---- Container List ----
-const loading = ref(false)
-const containers = ref([])
-
-const loadContainers = async () => {
-  loading.value = true
-  try {
-    const res = await listMenuContainers()
-    if (res.code === 0) {
-      containers.value = res.data.list || []
-    }
-  } catch (e) {
-    console.error('加载菜单容器列表失败:', e)
-  } finally {
-    loading.value = false
-  }
-}
-
-// ---- Container Dialog ----
-const containerDialogVisible = ref(false)
-const containerDialogType = ref('create')
-const editingContainerId = ref(0)
-const containerForm = ref({ name: {}, slug: '', sortOrder: 0 })
-const containerI18n = (field) => i18nBind(containerForm, field)
-
-const openContainerDialog = (type, row) => {
-  containerDialogType.value = type
-  editingContainerId.value = 0
-  containerForm.value = { name: {}, slug: '', sortOrder: 0 }
-
-  if (type === 'update' && row) {
-    containerForm.value = {
-      name: parseI18nField(row.name),
-      slug: row.slug || '',
-      sortOrder: row.sortOrder || 0
-    }
-    editingContainerId.value = row.id
-  }
-  containerDialogVisible.value = true
-}
-
-const handleSaveContainer = async () => {
-  const data = {
-    ...containerForm.value,
-    name: JSON.stringify(containerForm.value.name)
-  }
-  try {
-    let res
-    if (containerDialogType.value === 'create') {
-      res = await createMenuContainer(data)
-    } else {
-      res = await updateMenuContainer(editingContainerId.value, data)
-    }
-    if (res.code === 0) {
-      ElMessage.success('保存成功')
-      containerDialogVisible.value = false
-      loadContainers()
-    } else {
-      ElMessage.error(res.msg || '保存失败')
-    }
-  } catch (e) {
-    console.error('保存容器失败:', e)
-  }
-}
-
-const handleDeleteContainer = async (row) => {
-  try {
-    const res = await deleteMenuContainer(row.id)
-    if (res.code === 0) {
-      ElMessage.success('删除成功')
-      loadContainers()
-    } else {
-      ElMessage.error(res.msg || '删除失败')
-    }
-  } catch (e) {
-    console.error('删除容器失败:', e)
-  }
-}
-
-// ---- Menu Items Drawer ----
-const itemsDrawerVisible = ref(false)
-const itemsLoading = ref(false)
-const currentContainer = ref(null)
-const currentItems = ref([])
-const reorderIdsStr = ref('')
-
-const openItemsDialog = async (container) => {
-  currentContainer.value = container
-  itemsDrawerVisible.value = true
-  await loadItems(container.id)
-}
-
-const loadItems = async (containerId) => {
-  itemsLoading.value = true
-  try {
-    const res = await getMenuContainer(containerId)
-    if (res.code === 0) {
-      currentItems.value = res.data.items || []
-      reorderIdsStr.value = currentItems.value.map(i => i.id).join(',')
-    }
-  } catch (e) {
-    console.error('加载菜单项失败:', e)
-  } finally {
-    itemsLoading.value = false
-  }
-}
-
 const getItemMeta = (metaJson) => {
   if (!metaJson) return {}
   try { return JSON.parse(metaJson) } catch { return {} }
 }
 
-// ---- Item Dialog ----
-const itemDialogVisible = ref(false)
-const itemDialogType = ref('create')
-const editingItemId = ref(0)
-const itemForm = ref({ name: {}, slug: '', sortOrder: 0 })
-const itemMeta = ref({ type: 'url', url: '', target: '_self', object_id: 0 })
-const itemI18n = (field) => i18nBind(itemForm, field)
+// ---- Tree Data ----
+const loading = ref(false)
+const dragging = ref(false)
+const treeData = ref([])
+const flatNodes = ref([]) // flat list of all nodes for lookup
 
-const openItemDialog = (type, row) => {
-  itemDialogType.value = type
-  editingItemId.value = 0
-  itemForm.value = { name: {}, slug: '', sortOrder: 0 }
-  itemMeta.value = { type: 'url', url: '', target: '_self', object_id: 0 }
-
-  if (type === 'update' && row) {
-    itemForm.value = {
-      name: parseI18nField(row.name),
-      slug: row.slug || '',
-      sortOrder: row.sortOrder || 0
+const loadTree = async () => {
+  loading.value = true
+  try {
+    const res = await getMenuTree()
+    if (res.code === 0) {
+      treeData.value = res.data.tree || []
+      buildFlatNodes(treeData.value)
     }
-    itemMeta.value = getItemMeta(row.metaJson)
-    editingItemId.value = row.id
+  } catch (e) {
+    console.error('加载菜单树失败:', e)
+  } finally {
+    loading.value = false
   }
-  itemDialogVisible.value = true
 }
 
-const handleSaveItem = async () => {
-  const data = {
-    ...itemForm.value,
-    name: JSON.stringify(itemForm.value.name),
-    metaJson: JSON.stringify(itemMeta.value)
-  }
-  try {
-    let res
-    if (itemDialogType.value === 'create') {
-      res = await createMenuItem(currentContainer.value.id, data)
-    } else {
-      res = await updateMenuItem(editingItemId.value, data)
+const buildFlatNodes = (nodes, result = []) => {
+  for (const n of (nodes || [])) {
+    result.push(n)
+    if (n.children && n.children.length > 0) {
+      buildFlatNodes(n.children, result)
     }
+  }
+  flatNodes.value = result
+}
+
+// Find container ID for a given node (walk up the tree)
+const findContainerId = (nodeId) => {
+  // BFS to find the ancestor container
+  const findPath = (nodes, targetId, path = []) => {
+    for (const n of nodes) {
+      const currentPath = [...path, n]
+      if (n.id === targetId) return currentPath
+      if (n.children && n.children.length > 0) {
+        const found = findPath(n.children, targetId, currentPath)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  const path = findPath(treeData.value, nodeId)
+  if (!path || path.length === 0) return null
+  return path[0].id // container is always the root of the path
+}
+
+// ---- Tree ref & selection ----
+const treeRef = ref(null)
+const selectedId = ref(null)
+const selectedNode = computed(() => {
+  if (!selectedId.value) return null
+  return flatNodes.value.find(n => n.id === selectedId.value) || null
+})
+
+const handleNodeClick = (data) => {
+  selectedId.value = data.id
+}
+
+const clearSelection = () => {
+  selectedId.value = null
+  if (treeRef.value) treeRef.value.setCurrentKey(null)
+}
+
+// ---- Container Edit Form ----
+const containerEditForm = ref({ name: {}, slug: '', sortOrder: 0 })
+const containerEditName = computed({
+  get() {
+    const obj = containerEditForm.value.name
+    return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
+  },
+  set(val) {
+    if (!containerEditForm.value.name || typeof containerEditForm.value.name !== 'object') {
+      containerEditForm.value.name = {}
+    }
+    containerEditForm.value.name[cmsLocaleStore.activeLocale] = val
+  }
+})
+
+// ---- Item Edit Form ----
+const itemEditForm = ref({ name: {}, slug: '', sortOrder: 0 })
+const itemEditMeta = ref({ type: 'url', url: '', target: '_self', object_id: 0 })
+const itemEditName = computed({
+  get() {
+    const obj = itemEditForm.value.name
+    return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
+  },
+  set(val) {
+    if (!itemEditForm.value.name || typeof itemEditForm.value.name !== 'object') {
+      itemEditForm.value.name = {}
+    }
+    itemEditForm.value.name[cmsLocaleStore.activeLocale] = val
+  }
+})
+
+// Watch selectedNode → populate edit form
+watch(selectedNode, (node) => {
+  if (!node) return
+  if (node.isContainer) {
+    containerEditForm.value = {
+      name: parseI18nField(node.name),
+      slug: node.slug || '',
+      sortOrder: node.sortOrder || 0
+    }
+  } else {
+    itemEditForm.value = {
+      name: parseI18nField(node.name),
+      slug: node.slug || '',
+      sortOrder: node.sortOrder || 0
+    }
+    itemEditMeta.value = { ...{ type: 'url', url: '', target: '_self', object_id: 0 }, ...getItemMeta(node.metaJson) }
+  }
+})
+
+// ---- Save Container ----
+const saving = ref(false)
+
+const handleSaveContainer = async () => {
+  if (!selectedId.value) return
+  saving.value = true
+  try {
+    const data = {
+      name: JSON.stringify(containerEditForm.value.name),
+      slug: containerEditForm.value.slug,
+      sortOrder: containerEditForm.value.sortOrder
+    }
+    const res = await updateMenuContainer(selectedId.value, data)
     if (res.code === 0) {
       ElMessage.success('保存成功')
-      itemDialogVisible.value = false
-      loadItems(currentContainer.value.id)
-      loadContainers() // refresh container item count
+      await loadTree()
+      await nextTick()
+      if (treeRef.value && selectedId.value) treeRef.value.setCurrentKey(selectedId.value)
+    } else {
+      ElMessage.error(res.msg || '保存失败')
+    }
+  } catch (e) {
+    console.error('保存容器失败:', e)
+  } finally {
+    saving.value = false
+  }
+}
+
+// ---- Save Item ----
+const handleSaveItem = async () => {
+  if (!selectedId.value) return
+  saving.value = true
+  try {
+    const data = {
+      name: JSON.stringify(itemEditForm.value.name),
+      slug: itemEditForm.value.slug,
+      sortOrder: itemEditForm.value.sortOrder,
+      metaJson: JSON.stringify(itemEditMeta.value)
+    }
+    const res = await updateMenuItem(selectedId.value, data)
+    if (res.code === 0) {
+      ElMessage.success('保存成功')
+      await loadTree()
+      await nextTick()
+      if (treeRef.value && selectedId.value) treeRef.value.setCurrentKey(selectedId.value)
     } else {
       ElMessage.error(res.msg || '保存失败')
     }
   } catch (e) {
     console.error('保存菜单项失败:', e)
+  } finally {
+    saving.value = false
   }
 }
 
-const handleDeleteItem = async (row) => {
+// ---- Drag & Drop ----
+const allowDrop = (draggingNode, dropNode, type) => {
+  // Containers can only be reordered at root level (prev/next), never nested
+  if (draggingNode.data.isContainer) {
+    return type !== 'inner' && dropNode.data.isContainer
+  }
+  // Items can be reordered anywhere except becoming container siblings
+  // Allow: prev/next to items, inner of items, prev/next to items inside containers
+  return true
+}
+
+const handleNodeDrop = async (draggingNode, dropNode, dropType) => {
+  const moves = []
+
+  if (draggingNode.data.isContainer) {
+    // Container reorder: update sortOrder among containers
+    const containerSiblings = dropNode.parent?.childNodes || treeRef.value?.store?.root?.childNodes || []
+    for (let i = 0; i < containerSiblings.length; i++) {
+      const sib = containerSiblings[i]
+      moves.push({ id: sib.data.id, parentId: null, sortOrder: i })
+    }
+  } else {
+    // Item drop: compute new parentId and sortOrder
+    let newParentId
+    if (dropType === 'inner') {
+      newParentId = dropNode.data.id
+    } else {
+      // prev/next: same parent as dropNode
+      newParentId = dropNode.parent?.data?.id || 0
+    }
+
+    const siblings = dropType === 'inner'
+      ? (dropNode.childNodes || [])
+      : (dropNode.parent?.childNodes || [])
+
+    for (let i = 0; i < siblings.length; i++) {
+      const sib = siblings[i]
+      moves.push({ id: sib.data.id, parentId: newParentId, sortOrder: i })
+    }
+  }
+
+  dragging.value = true
   try {
-    const res = await deleteMenuItem(row.id)
+    const res = await batchReorderMenu(moves)
+    if (res.code === 0) {
+      ElMessage.success('排序已更新')
+      await loadTree()
+      await nextTick()
+      if (treeRef.value && selectedId.value) treeRef.value.setCurrentKey(selectedId.value)
+    } else {
+      ElMessage.error(res.msg || '排序失败')
+      await loadTree()
+    }
+  } catch (e) {
+    console.error('拖拽排序失败:', e)
+    await loadTree()
+  } finally {
+    dragging.value = false
+  }
+}
+
+// ---- Create Container Dialog ----
+const createContainerVisible = ref(false)
+const createForm = ref({ name: {}, slug: '', sortOrder: 0 })
+const createContainerName = computed({
+  get() {
+    const obj = createForm.value.name
+    return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
+  },
+  set(val) {
+    if (!createForm.value.name || typeof createForm.value.name !== 'object') {
+      createForm.value.name = {}
+    }
+    createForm.value.name[cmsLocaleStore.activeLocale] = val
+  }
+})
+
+const openCreateContainerDialog = () => {
+  createForm.value = { name: {}, slug: '', sortOrder: treeData.value.length }
+  createContainerVisible.value = true
+}
+
+const handleCreateContainer = async () => {
+  saving.value = true
+  try {
+    const data = {
+      name: JSON.stringify(createForm.value.name),
+      slug: createForm.value.slug,
+      sortOrder: createForm.value.sortOrder
+    }
+    const res = await createMenuContainer(data)
+    if (res.code === 0) {
+      ElMessage.success('创建成功')
+      createContainerVisible.value = false
+      await loadTree()
+    } else {
+      ElMessage.error(res.msg || '创建失败')
+    }
+  } catch (e) {
+    console.error('创建容器失败:', e)
+  } finally {
+    saving.value = false
+  }
+}
+
+// ---- Create Item Dialog ----
+const createItemVisible = ref(false)
+const createItemTitle = ref('新增菜单项')
+const createItemParentContainerId = ref(0)
+const createItemParentItemId = ref(null) // null = under container, value = under item
+const createItemForm = ref({ name: {}, slug: '', sortOrder: 0 })
+const createItemMeta = ref({ type: 'url', url: '', target: '_self', object_id: 0 })
+const createItemName = computed({
+  get() {
+    const obj = createItemForm.value.name
+    return (obj && typeof obj === 'object') ? (obj[cmsLocaleStore.activeLocale] || '') : ''
+  },
+  set(val) {
+    if (!createItemForm.value.name || typeof createItemForm.value.name !== 'object') {
+      createItemForm.value.name = {}
+    }
+    createItemForm.value.name[cmsLocaleStore.activeLocale] = val
+  }
+})
+
+const handleAddItem = (containerNode) => {
+  createItemTitle.value = `新增菜单项 - ${getI18nText(containerNode.name)}`
+  createItemParentContainerId.value = containerNode.id
+  createItemParentItemId.value = null
+  createItemForm.value = { name: {}, slug: '', sortOrder: (containerNode.children || []).length }
+  createItemMeta.value = { type: 'url', url: '', target: '_self', object_id: 0 }
+  createItemVisible.value = true
+}
+
+const handleAddChild = (parentNode) => {
+  createItemTitle.value = `新增子菜单项 - ${getI18nText(parentNode.name)}`
+  const containerId = findContainerId(parentNode.id)
+  createItemParentContainerId.value = containerId || 0
+  createItemParentItemId.value = parentNode.id
+  createItemForm.value = { name: {}, slug: '', sortOrder: (parentNode.children || []).length }
+  createItemMeta.value = { type: 'url', url: '', target: '_self', object_id: 0 }
+  createItemVisible.value = true
+}
+
+const handleCreateItem = async () => {
+  saving.value = true
+  try {
+    const data = {
+      name: JSON.stringify(createItemForm.value.name),
+      slug: createItemForm.value.slug,
+      sortOrder: createItemForm.value.sortOrder,
+      metaJson: JSON.stringify(createItemMeta.value)
+    }
+    if (createItemParentItemId.value != null) {
+      // Creating under another item
+      data.parentId = createItemParentItemId.value
+    }
+    const res = await createMenuItem(createItemParentContainerId.value, data)
+    if (res.code === 0) {
+      ElMessage.success('创建成功')
+      createItemVisible.value = false
+      await loadTree()
+    } else {
+      ElMessage.error(res.msg || '创建失败')
+    }
+  } catch (e) {
+    console.error('创建菜单项失败:', e)
+  } finally {
+    saving.value = false
+  }
+}
+
+// ---- Delete ----
+const handleDelete = async (data) => {
+  try {
+    let res
+    if (data.isContainer) {
+      res = await deleteMenuContainer(data.id)
+    } else {
+      res = await deleteMenuItem(data.id)
+    }
     if (res.code === 0) {
       ElMessage.success('删除成功')
-      loadItems(currentContainer.value.id)
-      loadContainers()
+      if (selectedId.value === data.id) {
+        selectedId.value = null
+      }
+      await loadTree()
     } else {
       ElMessage.error(res.msg || '删除失败')
     }
   } catch (e) {
-    console.error('删除菜单项失败:', e)
-  }
-}
-
-const handleReorder = async () => {
-  const ids = reorderIdsStr.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
-  if (ids.length === 0) {
-    ElMessage.warning('请输入有效的 ID 顺序')
-    return
-  }
-  try {
-    const res = await reorderMenuItems(currentContainer.value.id, ids)
-    if (res.code === 0) {
-      ElMessage.success('排序已保存')
-      loadItems(currentContainer.value.id)
-    } else {
-      ElMessage.error(res.msg || '排序失败')
-    }
-  } catch (e) {
-    console.error('排序失败:', e)
+    console.error('删除失败:', e)
   }
 }
 
 onMounted(() => {
-  loadContainers()
+  loadTree()
   cmsLocaleStore.init()
 })
 </script>
@@ -417,11 +645,100 @@ onMounted(() => {
   padding: 20px;
   background: #fff;
   border-radius: 4px;
-  margin-bottom: 10px;
 }
-.gva-table-box {
-  padding: 20px;
-  background: #fff;
+
+.tree-editor {
+  display: flex;
+  gap: 20px;
+  min-height: 420px;
+}
+
+.tree-drop-zone {
+  min-height: 300px;
+  flex: 1;
+}
+
+.tree-panel {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--el-border-color-light, #e4e7ed);
   border-radius: 4px;
+  padding: 12px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-toolbar {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
+}
+
+.edit-panel {
+  width: 400px;
+  flex-shrink: 0;
+  border: 1px solid var(--el-border-color-light, #e4e7ed);
+  border-radius: 4px;
+  padding: 20px;
+  background: var(--el-fill-color-lighter, #f5f7fa);
+}
+
+.edit-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding-right: 8px;
+  font-size: 14px;
+}
+
+.node-label {
+  font-weight: 500;
+}
+
+.node-tag {
+  font-size: 11px;
+}
+
+.node-url {
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.node-actions {
+  margin-left: auto;
+  display: none;
+  gap: 2px;
+}
+
+.tree-node:hover .node-actions {
+  display: flex;
+}
+
+.tree-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 }
 </style>

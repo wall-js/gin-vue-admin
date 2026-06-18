@@ -8,77 +8,120 @@ import (
 	model "github.com/flipped-aurora/gin-vue-admin/server/model/system"
 )
 
+// menuGroup defines a parent menu and its children.
+type menuGroup struct {
+	parent   model.SysBaseMenu
+	children []model.SysBaseMenu
+}
+
 func Menu(ctx context.Context) {
-	entities := []model.SysBaseMenu{
+	groups := []menuGroup{
 		{
-			ParentId:  0,
-			Path:      "cms",
-			Name:      "cms",
-			Hidden:    false,
-			Component: "view/routerHolder.vue",
-			Sort:      5,
-			Meta:      model.Meta{Title: "内容管理", Icon: "document"},
+			parent: model.SysBaseMenu{
+				ParentId:  0,
+				Path:      "cms",
+				Name:      "cms",
+				Hidden:    false,
+				Component: "view/routerHolder.vue",
+				Sort:      5,
+				Meta:      model.Meta{Title: "内容管理", Icon: "document"},
+			},
+			children: []model.SysBaseMenu{
+				{
+					ParentId:  0,
+					Path:      "cmsPosts",
+					Name:      "cmsPosts",
+					Hidden:    false,
+					Component: "plugin/uni/cms/view/posts.vue",
+					Sort:      1,
+					Meta:      model.Meta{Title: "文章管理", Icon: "notebook"},
+				},
+				{
+					ParentId:  0,
+					Path:      "cmsSite",
+					Name:      "cmsSite",
+					Hidden:    false,
+					Component: "plugin/uni/cms/view/site.vue",
+					Sort:      2,
+					Meta:      model.Meta{Title: "站点设置", Icon: "setting"},
+				},
+				{
+					ParentId:  0,
+					Path:      "cmsCategories",
+					Name:      "cmsCategories",
+					Hidden:    false,
+					Component: "plugin/uni/cms/view/categories.vue",
+					Sort:      3,
+					Meta:      model.Meta{Title: "分类管理", Icon: "folder"},
+				},
+				{
+					ParentId:  0,
+					Path:      "cmsTags",
+					Name:      "cmsTags",
+					Hidden:    false,
+					Component: "plugin/uni/cms/view/tags.vue",
+					Sort:      4,
+					Meta:      model.Meta{Title: "标签管理", Icon: "price-tag"},
+				},
+				{
+					ParentId:  0,
+					Path:      "cmsMenus",
+					Name:      "cmsMenus",
+					Hidden:    false,
+					Component: "plugin/uni/cms/view/menus.vue",
+					Sort:      5,
+					Meta:      model.Meta{Title: "菜单管理", Icon: "menu"},
+				},
+			},
 		},
 		{
-			ParentId:  0,
-			Path:      "cmsSite",
-			Name:      "cmsSite",
-			Hidden:    false,
-			Component: "plugin/uni/cms/view/site.vue",
-			Sort:      1,
-			Meta:      model.Meta{Title: "站点设置", Icon: "setting"},
-		},
-		{
-			ParentId:  0,
-			Path:      "cmsPosts",
-			Name:      "cmsPosts",
-			Hidden:    false,
-			Component: "plugin/uni/cms/view/posts.vue",
-			Sort:      2,
-			Meta:      model.Meta{Title: "文章管理", Icon: "notebook"},
-		},
-		{
-			ParentId:  0,
-			Path:      "cmsCategories",
-			Name:      "cmsCategories",
-			Hidden:    false,
-			Component: "plugin/uni/cms/view/categories.vue",
-			Sort:      3,
-			Meta:      model.Meta{Title: "分类管理", Icon: "folder"},
-		},
-		{
-			ParentId:  0,
-			Path:      "cmsTags",
-			Name:      "cmsTags",
-			Hidden:    false,
-			Component: "plugin/uni/cms/view/tags.vue",
-			Sort:      4,
-			Meta:      model.Meta{Title: "标签管理", Icon: "price-tag"},
-		},
-		{
-			ParentId:  0,
-			Path:      "cmsMenus",
-			Name:      "cmsMenus",
-			Hidden:    false,
-			Component: "plugin/uni/cms/view/menus.vue",
-			Sort:      5,
-			Meta:      model.Meta{Title: "菜单管理", Icon: "menu"},
+			parent: model.SysBaseMenu{
+				ParentId:  0,
+				Path:      "operations",
+				Name:      "operations",
+				Hidden:    false,
+				Component: "view/routerHolder.vue",
+				Sort:      6,
+				Meta:      model.Meta{Title: "运营管理", Icon: "data-line"},
+			},
+			children: []model.SysBaseMenu{
+				{
+					ParentId:  0,
+					Path:      "tenants",
+					Name:      "tenants",
+					Hidden:    false,
+					Component: "plugin/uni/center/view/tenants.vue",
+					Sort:      0,
+					Meta:      model.Meta{Title: "租户管理", Icon: "avatar"},
+				},
+				{
+					ParentId:  0,
+					Path:      "cmsSites",
+					Name:      "cmsSites",
+					Hidden:    false,
+					Component: "plugin/uni/cms/view/sites.vue",
+					Sort:      0,
+					Meta:      model.Meta{Title: "站点管理", Icon: "grid"},
+				},
+			},
 		},
 	}
 
-	// Idempotent: ensure all CMS menus exist.
+	// Idempotent: ensure all menus exist.
 	// Each menu is checked individually — safe to run on both fresh and existing installs.
-	ensureAllMenus(entities)
+	for _, g := range groups {
+		ensureMenuGroup(g)
+	}
 }
 
-// ensureAllMenus ensures the parent "cms" menu and all child menus exist.
-func ensureAllMenus(entities []model.SysBaseMenu) {
+// ensureMenuGroup ensures a parent menu and its children exist.
+func ensureMenuGroup(group menuGroup) {
 	db := global.GVA_DB
 	if db == nil {
 		return
 	}
 
-	parentDef := entities[0]
+	parentDef := group.parent
 
 	// Deduplicate: if multiple parent menus with the same name exist, keep the oldest one
 	var parentMenus []model.SysBaseMenu
@@ -93,7 +136,7 @@ func ensureAllMenus(entities []model.SysBaseMenu) {
 		}
 	}
 
-	// Ensure the parent cms menu exists
+	// Ensure the parent menu exists
 	var parentMenu model.SysBaseMenu
 	if err := db.Where("name = ?", parentDef.Name).First(&parentMenu).Error; err != nil {
 		parentMenu = parentDef
@@ -104,7 +147,7 @@ func ensureAllMenus(entities []model.SysBaseMenu) {
 	}
 
 	// Ensure each child menu exists and is parented correctly
-	for _, m := range entities[1:] {
+	for _, m := range group.children {
 		var existing model.SysBaseMenu
 		var count int64
 		db.Model(&model.SysBaseMenu{}).Where("name = ?", m.Name).Count(&count)
