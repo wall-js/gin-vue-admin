@@ -7,7 +7,6 @@
         <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
           <h2 style="margin: 0;">站点设置</h2>
           <div>
-            <el-button type="warning" :loading="demoLoading" @click="handleDemoData">生成演示数据</el-button>
             <el-button type="primary" :loading="saveLoading" @click="handleSave">保存</el-button>
           </div>
         </div>
@@ -124,17 +123,16 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { Link } from '@element-plus/icons-vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
-import { getSite, updateSite, createDemoData } from '../api/site.js'
+import { getSite, updateSite } from '../api/site.js'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
 const cmsLocaleStore = useCmsLocaleStore()
 
 const pageLoading = ref(false)
 const saveLoading = ref(false)
-const demoLoading = ref(false)
 
 const formData = ref({
   name: {},
@@ -277,33 +275,6 @@ const handleSave = async () => {
     console.error('保存失败:', e)
   } finally {
     saveLoading.value = false
-  }
-}
-
-// 生成演示数据
-const handleDemoData = async () => {
-  try {
-    await ElMessageBox.confirm('此操作将为当前站点生成演示数据（纯插入，不删除现有数据），是否继续？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-  } catch {
-    return
-  }
-  demoLoading.value = true
-  try {
-    const res = await createDemoData()
-    if (res.code === 0) {
-      ElMessage.success('演示数据生成成功')
-      loadSite()
-    } else {
-      ElMessage.error(res.msg || '生成失败')
-    }
-  } catch (e) {
-    console.error('生成演示数据失败:', e)
-  } finally {
-    demoLoading.value = false
   }
 }
 

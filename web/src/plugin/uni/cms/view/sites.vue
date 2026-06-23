@@ -27,6 +27,12 @@
               <span>{{ parseName(row.name) }}</span>
             </template>
           </el-table-column>
+          <el-table-column label="所属租户" width="150">
+            <template #default="{ row }">
+              <el-tag v-if="row.tenantId" size="small">{{ getTenantName(row.tenantId) }}</el-tag>
+              <el-tag v-else type="info" size="small">未分配</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="域名" prop="domain" min-width="180">
             <template #default="{ row }">
               <el-tag v-if="row.domain" type="success" size="small">{{ row.domain }}</el-tag>
@@ -42,9 +48,10 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" fixed="right">
+          <el-table-column label="操作" width="250" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
+              <el-button type="warning" link @click="handleDemoData(row)">演示数据</el-button>
               <el-button v-if="activeSiteId !== row.id" type="success" link @click="handleSwitchSite(row)">切换</el-button>
               <el-tag v-else type="success" size="small" effect="dark">当前</el-tag>
             </template>
@@ -58,6 +65,19 @@
       <el-form :model="editForm" label-width="100px" v-loading="editLoading">
         <el-form-item label="站点名称">
           <el-input v-model="editNameValue" placeholder="请输入站点名称" />
+        </el-form-item>
+        <el-form-item label="所属租户">
+          <el-select v-model="editForm.tenantId" placeholder="选择租户" clearable filterable>
+            <el-option
+              v-for="t in tenants"
+              :key="t.id"
+              :label="t.name"
+              :value="t.id"
+            >
+              <span>{{ t.name }}</span>
+              <el-tag size="small" type="info" style="margin-left: 8px;">{{ t.slug }}</el-tag>
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="绑定域名">
           <el-input v-model="editForm.domain" placeholder="如 example.com" />
@@ -103,12 +123,32 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
-import { listSites, getSite, updateSite } from '../api/site.js'
+import { listSites, getSite, updateSite, createDemoData } from '../api/site.js'
+import { listTenants } from '../../core/api/tenant.js'
 
 const loading = ref(false)
 const siteList = ref([])
+const tenants = ref([])
+
+// 加载租户列表
+const loadTenants = async () => {
+  try {
+    const res = await listTenants({ offset: 0, limit: 100 })
+    if (res.code === 0) {
+      tenants.value = res.data.items || []
+    }
+  } catch (e) {
+    console.error('加载租户列表失败:', e)
+  }
+}
+
+// 根据 tenantId 获取租户名称
+const getTenantName = (tenantId) => {
+  const t = tenants.value.find(t => t.id === tenantId)
+  return t ? t.name : tenantId ? `租户 #${tenantId}` : '未分配'
+}
 
 // 当前激活站点
 const activeSiteId = ref(Number(localStorage.getItem('cms_site_id')) || null)
@@ -125,6 +165,7 @@ const saveLoading = ref(false)
 const editingSiteId = ref(null)
 const editSiteName = ref('')
 const editForm = ref({
+  tenantId: null,
   domain: '',
   locale: 'zh',
   locales: '["zh","en"]',
@@ -238,6 +279,7 @@ const handleEdit = async (row) => {
     if (res.code === 0) {
       const data = res.data
       editForm.value = {
+        tenantId: data.tenantId || null,
         domain: data.domain || '',
         locale: data.locale || 'zh',
         locales: data.locales || '["zh","en"]',
@@ -276,7 +318,8 @@ const handleSaveEdit = async () => {
       metaKeywords: typeof full.metaKeywords === 'string' ? full.metaKeywords : JSON.stringify(full.metaKeywords || {}),
       settingsJson: typeof full.settingsJson === 'string' ? full.settingsJson : JSON.stringify(full.settingsJson || {}),
       domain: editForm.value.domain || '',
-      status: editForm.value.status
+      status: editForm.value.status,
+      tenantId: editForm.value.tenantId,
     }
 
     const res = await withSiteId(editingSiteId.value, () => updateSite(data))
@@ -314,8 +357,50 @@ const tableRowClassName = ({ row }) => {
   return row.id === activeSiteId.value ? 'active-site-row' : ''
 }
 
+// 生成演示数据（两步确认）
+const handleDemoData = async (row) => {
+  const siteName = parseName(row.name)
+  // 第一步：确认目标站点
+  try {
+    await ElMessageBox.confirm(
+      `即将为站点「${siteName}」生成演示数据，包括示例文章、分类、标签、菜单等内容。此操作为纯插入，不会删除现有数据。`,
+      '生成演示数据 - 第一步确认',
+      { confirmButtonText: '继续', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  // 第二步：最终确认
+  try {
+    await ElMessageBox.confirm(
+      `请再次确认：确定要为站点「${siteName}」生成演示数据吗？此操作不可撤销。`,
+      '最终确认',
+      { confirmButtonText: '确定生成', cancelButtonText: '放弃', type: 'error', confirmButtonClass: 'el-button--danger' }
+    )
+  } catch {
+    return
+  }
+  // 执行生成
+  loading.value = true
+  try {
+    const res = await withSiteId(row.id, () => createDemoData())
+    if (res.code === 0) {
+      ElMessage.success(`站点「${siteName}」演示数据生成成功`)
+      loadSites()
+    } else {
+      ElMessage.error(res.msg || '生成失败')
+    }
+  } catch (e) {
+    console.error('生成演示数据失败:', e)
+    ElMessage.error('生成演示数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(() => {
   loadSites()
+  loadTenants()
 })
 </script>
 
