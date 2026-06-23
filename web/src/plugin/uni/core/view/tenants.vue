@@ -29,12 +29,12 @@
         <div style="display: flex; align-items: center; gap: 12px;">
           <h2 style="margin: 0;">租户管理</h2>
           <el-tag type="info" size="small">共 {{ total }} 条</el-tag>
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <el-button type="primary" @click="loadData">
+          <el-button type="primary" link @click="loadData">
             <el-icon><Refresh /></el-icon>
             刷新
           </el-button>
+        </div>
+        <div style="display: flex; gap: 8px;">
           <el-button type="primary" @click="openDrawer('create')">
             <el-icon><Plus /></el-icon>
             新增租户
