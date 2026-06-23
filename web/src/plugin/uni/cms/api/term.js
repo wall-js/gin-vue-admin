@@ -1,4 +1,4 @@
-import { cmsGet, cmsPost, cmsPut, cmsDelete } from './cmsClient'
+import { cmsGet, cmsPost, cmsPut, cmsDelete } from '../../utils/apiClient'
 
 // 分类/标签列表
 export const listTerms = (params) => cmsGet('/terms', params)

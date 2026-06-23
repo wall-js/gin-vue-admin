@@ -1,4 +1,4 @@
-import { coreGet, corePost, corePut, coreDelete } from './coreClient'
+import { coreGet, corePost, corePut, coreDelete } from '../../utils/apiClient'
 
 // 租户列表
 export const listTenants = (params) => coreGet('/tenants', params)

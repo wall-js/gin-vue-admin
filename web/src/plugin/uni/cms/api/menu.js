@@ -1,4 +1,4 @@
-import { cmsGet, cmsPost, cmsPut, cmsDelete } from './cmsClient'
+import { cmsGet, cmsPost, cmsPut, cmsDelete } from '../../utils/apiClient'
 
 // Menu Containers
 export const listMenuContainers = () => cmsGet('/menus')

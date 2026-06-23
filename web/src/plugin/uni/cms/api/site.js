@@ -1,4 +1,4 @@
-import { cmsGet, cmsPut, cmsPost } from './cmsClient'
+import { cmsGet, cmsPut, cmsPost } from '../../utils/apiClient'
 
 // 获取站点列表
 export const listSites = () => cmsGet('/sites')
