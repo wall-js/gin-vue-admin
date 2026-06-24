@@ -99,7 +99,7 @@ func Menu(ctx context.Context) {
 					Path:      "cmsSites",
 					Name:      "cmsSites",
 					Hidden:    false,
-					Component: "plugin/uni/cms/view/sites.vue",
+					Component: "plugin/uni/core/view/sites.vue",
 					Sort:      0,
 					Meta:      model.Meta{Title: "站点管理", Icon: "grid"},
 				},

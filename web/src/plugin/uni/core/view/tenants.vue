@@ -43,7 +43,7 @@
       </div>
 
       <el-table :data="tableData" stripe v-loading="tableLoading" style="width: 100%">
-        <el-table-column type="index" label="#" width="60" />
+        <!-- <el-table-column type="index" label="#" width="60" /> -->
         <el-table-column prop="name" label="租户名称" min-width="160">
           <template #default="{ row }">
             <span style="font-weight: 500;">{{ row.name }}</span>

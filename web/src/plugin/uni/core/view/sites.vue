@@ -48,7 +48,6 @@
 
       <el-table :data="filteredSites" v-loading="loading" stripe style="width: 100%"
         :row-class-name="tableRowClassName">
-        <el-table-column label="ID" prop="id" width="80" />
         <el-table-column label="站点名称" min-width="200">
           <template #default="{ row }">
             <span>{{ parseName(row.name) }}</span>
@@ -163,6 +162,29 @@
     <!-- 证书管理抽屉 -->
     <el-drawer v-model="certDrawerVisible" :title="`TLS 证书 - ${certSiteName}`" size="520px" direction="rtl">
       <div v-loading="certLoading">
+        <!-- TLS 自动签发设置 -->
+        <div style="margin-bottom: 20px; padding: 16px; background: #ecf5ff; border-radius: 4px; border-left: 4px solid #409eff;">
+          <h4 style="margin: 0 0 12px 0; color: #409eff;">自动证书 (Let's Encrypt)</h4>
+          <el-form label-width="100px" size="small">
+            <el-form-item label="自动签发">
+              <el-switch v-model="tlsAutoForm.tlsAuto" :active-value="1" :inactive-value="0"
+                active-text="开启" inactive-text="关闭" />
+              <span style="margin-left: 12px; font-size: 12px; color: #999;">
+                {{ tlsAutoForm.tlsAuto ? '网关将自动申请和续签证书' : '证书需手动上传' }}
+              </span>
+            </el-form-item>
+            <el-form-item label="ACME 邮箱" v-if="tlsAutoForm.tlsAuto">
+              <el-input v-model="tlsAutoForm.tlsEmail" placeholder="admin@example.com" style="width: 280px;" />
+              <div style="font-size: 12px; color: #999; margin-top: 4px;">
+                用于 Let's Encrypt 注册和证书过期提醒
+              </div>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" size="small" :loading="tlsAutoLoading" @click="handleSaveTlsSettings">保存设置</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+
         <div v-if="certInfo.certStatus > 0" style="margin-bottom: 20px; padding: 16px; background: #f5f7fa; border-radius: 4px;">
           <h4 style="margin: 0 0 12px 0;">当前证书</h4>
           <el-descriptions :column="1" size="small" border>
@@ -239,8 +261,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Plus } from '@element-plus/icons-vue'
-import { listSites, getSite, updateSite, createDemoData, getCert, uploadCert, clearCert, createSite } from '../api/site.js'
-import { listTenants } from '../../core/api/tenant.js'
+import { listSites, getSite, updateSite, createDemoData, getCert, uploadCert, clearCert, createSite } from '../../cms/api/site.js'
+import { listTenants } from '../api/tenant.js'
 
 const loading = ref(false)
 const siteList = ref([])
@@ -586,6 +608,10 @@ const certSiteId = ref(null)
 const certInfo = ref({ certStatus: 0, certSource: 0 })
 const certUploadForm = ref({ certPem: '', keyPem: '' })
 
+// TLS 自动签发设置
+const tlsAutoForm = ref({ tlsAuto: 0, tlsEmail: '' })
+const tlsAutoLoading = ref(false)
+
 const certStatusText = (s) => ({ 1: '有效', 2: '即将过期', 3: '已过期' }[s] || '未知')
 const certStatusType = (s) => ({ 1: 'success', 2: 'warning', 3: 'danger' }[s] || 'info')
 const certSourceText = (s) => ({ 1: 'Let\'s Encrypt', 2: '手动上传', 3: '自签名' }[s] || '未知')
@@ -594,6 +620,8 @@ const handleCertManage = async (row) => {
   certSiteId.value = row.id
   certSiteName.value = parseName(row.name)
   certUploadForm.value = { certPem: '', keyPem: '' }
+  // 初始化 TLS 设置
+  tlsAutoForm.value = { tlsAuto: row.tlsAuto || 0, tlsEmail: row.tlsEmail || '' }
   certDrawerVisible.value = true
   certLoading.value = true
   try {
@@ -653,6 +681,28 @@ const handleClearCert = async () => {
     ElMessage.error('清除证书失败')
   } finally {
     certLoading.value = false
+  }
+}
+
+// 保存 TLS 自动签发设置
+const handleSaveTlsSettings = async () => {
+  tlsAutoLoading.value = true
+  try {
+    const res = await withSiteId(certSiteId.value, () => updateSite({
+      tlsAuto: tlsAutoForm.value.tlsAuto,
+      tlsEmail: tlsAutoForm.value.tlsEmail || '',
+    }))
+    if (res.code === 0) {
+      ElMessage.success('TLS 设置已保存')
+      loadSites()
+    } else {
+      ElMessage.error(res.msg || '保存失败')
+    }
+  } catch (e) {
+    console.error('保存 TLS 设置失败:', e)
+    ElMessage.error('保存 TLS 设置失败')
+  } finally {
+    tlsAutoLoading.value = false
   }
 }
 

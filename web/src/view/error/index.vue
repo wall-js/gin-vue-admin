@@ -7,12 +7,13 @@
         <p class="text-lg">{{ t('error.message2') }}</p>
         <p>
           {{ t('error.projectAddress')
-          }}<a
+          }}
+          <!-- <a
             href="https://github.com/flipped-aurora/gin-vue-admin"
             target="_blank"
             class="text-blue-600"
             >https://github.com/flipped-aurora/gin-vue-admin</a
-          >
+          > -->
         </p>
         <el-button @click="toDashboard">{{ t('error.backToHome') }}</el-button>
       </div>
