@@ -135,7 +135,12 @@ export const cmsDelete = cms.del
 // ────────────────────────────────────────────────────
 // Core 运营中心服务
 // ────────────────────────────────────────────────────
-const core = createApiClient('/api/v1/core')
+const core = createApiClient('/api/v1/core', {
+  getHeaders() {
+    const siteId = localStorage.getItem('cms_site_id')
+    return siteId ? { 'X-Admin-Site-Id': siteId } : {}
+  },
+})
 
 export const coreGet = core.get
 export const corePost = core.post

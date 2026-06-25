@@ -1,6 +1,11 @@
 <template>
   <div>
-    <LocaleSwitcher />
+    <LocaleSwitcher
+      entity-type="term"
+      :get-entity-id="() => selectedNode?.id"
+      :can-translate="() => !!selectedNode"
+      :on-translated="loadTerms"
+    />
 
     <div class="gva-search-box">
       <div style="margin-bottom: 12px;">
@@ -37,16 +42,6 @@
                   <span class="node-label">{{ getI18nText(data.name) }}</span>
                   <span class="node-slug">{{ data.slug }}</span>
                   <span class="node-actions">
-                    <el-button
-                      v-if="node.level > 1"
-                      type="warning"
-                      link
-                      size="small"
-                      @click.stop="handlePromoteToRoot(data)"
-                      title="设为顶级"
-                    >
-                      <el-icon><Top /></el-icon>
-                    </el-button>
                     <el-button type="primary" link size="small" @click.stop="handleAddChild(data)" title="添加子项">
                       <el-icon><Plus /></el-icon>
                     </el-button>
@@ -75,6 +70,23 @@
         <div class="edit-panel" v-if="selectedNode">
           <h3 style="margin: 0 0 16px 0;">编辑{{ typeLabel }}</h3>
           <el-form :model="editForm" label-width="70px" size="default">
+            <el-form-item v-if="hierarchical" label="父级">
+              <el-select
+                v-model="editForm.parentId"
+                filterable
+                placeholder="顶级（无父级）"
+                clearable
+                style="width: 100%;"
+              >
+                <el-option label="顶级（无父级）" :value="0" />
+                <el-option
+                  v-for="opt in parentOptions"
+                  :key="opt.id"
+                  :label="getI18nText(opt.name) || opt.slug"
+                  :value="opt.id"
+                />
+              </el-select>
+            </el-form-item>
             <el-form-item label="名称" required>
               <el-input v-model="editName" :placeholder="`${typeLabel}名称`" />
             </el-form-item>
@@ -205,9 +217,9 @@
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, Delete, Top } from '@element-plus/icons-vue'
+import { Plus, Delete } from '@element-plus/icons-vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
-import { listTerms, createTerm, updateTerm, deleteTerm } from '../api/term.js'
+import { listTerms, createTerm, updateTerm, deleteTerm, batchReorderTerms } from '../api/term.js'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
 const props = defineProps({
@@ -308,7 +320,7 @@ const clearSelection = () => {
 }
 
 // ---- Right panel edit form ----
-const editForm = ref({ name: {}, slug: '', description: {}, sortOrder: 0 })
+const editForm = ref({ name: {}, slug: '', description: {}, sortOrder: 0, parentId: 0 })
 const saving = ref(false)
 
 const editName = computed({
@@ -344,7 +356,8 @@ watch(selectedNode, (node) => {
       name: parseI18nField(node.name),
       slug: node.slug || '',
       description: parseI18nField(node.description),
-      sortOrder: node.sortOrder || 0
+      sortOrder: node.sortOrder || 0,
+      parentId: node.parentId || 0
     }
   }
 })
@@ -355,7 +368,7 @@ const handleSaveEdit = async () => {
   try {
     const data = {
       type: props.termType,
-      parentId: selectedNode.value?.parentId || 0,
+      parentId: editForm.value.parentId || 0,
       name: JSON.stringify(editForm.value.name),
       slug: editForm.value.slug,
       description: JSON.stringify(editForm.value.description),
@@ -381,8 +394,8 @@ const handleSaveEdit = async () => {
 
 // ---- Drag & Drop ----
 const allowDrop = (draggingNode, dropNode, type) => {
-  // 始终允许同级前后拖放（可用于提升为顶级）
-  return true
+  // 只允许同级拖放排序（prev/next），不允许嵌套改变父级
+  return type !== 'inner'
 }
 
 // 扁平模式：只允许 prev/next，禁止 inner（不允许嵌套）
@@ -391,25 +404,23 @@ const flatAllowDrop = (draggingNode, dropNode, type) => {
 }
 
 const handleFlatNodeDrop = async (draggingNode, dropNode, dropType) => {
-  // 获取当前所有节点的顺序
   const siblings = dropNode.parent?.childNodes || flatTreeRef.value?.store?.root?.childNodes || []
-  const updates = siblings.map((node, index) => ({
+  const moves = siblings.map((node, index) => ({
     id: node.data.id,
+    parentId: 0,
     sortOrder: index
   }))
 
   dragging.value = true
   try {
-    // 批量更新排序
-    await Promise.all(updates.map(u =>
-      updateTerm(u.id, {
-        type: props.termType,
-        parentId: 0,
-        sortOrder: u.sortOrder
-      })
-    ))
-    ElMessage.success('排序已更新')
-    await loadTerms()
+    const res = await batchReorderTerms(moves)
+    if (res.code === 0) {
+      ElMessage.success('排序已更新')
+      await loadTerms()
+    } else {
+      ElMessage.error(res.msg || '排序失败')
+      await loadTerms()
+    }
   } catch (e) {
     console.error('拖拽排序失败:', e)
     await loadTerms()
@@ -419,57 +430,42 @@ const handleFlatNodeDrop = async (draggingNode, dropNode, dropType) => {
 }
 
 const handleNodeDrop = async (draggingNode, dropNode, dropType) => {
-  // Determine new parentId
-  let newParentId = 0
-  if (dropType === 'inner') {
-    newParentId = dropNode.data.id
-  } else {
-    newParentId = dropNode.parent?.data?.id || 0
-  }
+  const siblings = dropNode.parent?.childNodes || treeRef.value?.store?.root?.childNodes || []
+  const parentId = dropNode.parent?.data?.id || 0
 
-  // Get siblings and compute sortOrder
-  const siblings = dropType === 'inner'
-    ? (dropNode.childNodes || [])
-    : (dropNode.parent?.childNodes || [])
-
-  const id = draggingNode.data.id
-  const newSort = siblings.findIndex(n => n.data.id === id)
-
-  const oldParentId = draggingNode.data.parentId || 0
+  const moves = siblings.map((node, index) => ({
+    id: node.data.id,
+    parentId: parentId,
+    sortOrder: index
+  }))
 
   dragging.value = true
   try {
-    const data = {
-      type: props.termType,
-      parentId: newParentId,
-      name: typeof draggingNode.data.name === 'string'
-        ? draggingNode.data.name
-        : JSON.stringify(draggingNode.data.name || {}),
-      slug: draggingNode.data.slug || '',
-      description: typeof draggingNode.data.description === 'string'
-        ? draggingNode.data.description
-        : JSON.stringify(draggingNode.data.description || {}),
-      sortOrder: newSort >= 0 ? newSort : draggingNode.data.sortOrder || 0
-    }
-    const res = await updateTerm(id, data)
+    const res = await batchReorderTerms(moves)
     if (res.code === 0) {
-      ElMessage.success('层级已更新')
+      ElMessage.success('排序已更新')
       await loadTerms()
       await nextTick()
       if (activeTreeRef.value && selectedId.value) {
         activeTreeRef.value.setCurrentKey(selectedId.value)
       }
     } else {
-      ElMessage.error(res.msg || '更新失败')
+      ElMessage.error(res.msg || '排序失败')
       await loadTerms()
     }
   } catch (e) {
-    console.error('拖拽更新失败:', e)
+    console.error('拖拽排序失败:', e)
     await loadTerms()
   } finally {
     dragging.value = false
   }
 }
+
+// ---- Parent options for hierarchical edit ----
+const parentOptions = computed(() => {
+  if (!hierarchical.value) return []
+  return flatTerms.value.filter(t => t.id !== selectedId.value)
+})
 
 // ---- Create new ----
 const createDialogVisible = ref(false)
@@ -552,35 +548,6 @@ const handleCreate = async () => {
   }
 }
 
-// ---- Promote to Root ----
-const handlePromoteToRoot = async (data) => {
-  dragging.value = true
-  try {
-    const res = await updateTerm(data.id, {
-      type: props.termType,
-      parentId: 0,
-      name: typeof data.name === 'string' ? data.name : JSON.stringify(data.name || {}),
-      slug: data.slug || '',
-      description: typeof data.description === 'string' ? data.description : JSON.stringify(data.description || {}),
-      sortOrder: data.sortOrder || 0
-    })
-    if (res.code === 0) {
-      ElMessage.success(`已将「${getI18nText(data.name)}」设为顶级`)
-      await loadTerms()
-      await nextTick()
-      if (activeTreeRef.value && selectedId.value) {
-        activeTreeRef.value.setCurrentKey(selectedId.value)
-      }
-    } else {
-      ElMessage.error(res.msg || '操作失败')
-    }
-  } catch (e) {
-    console.error('设为顶级失败:', e)
-  } finally {
-    dragging.value = false
-  }
-}
-
 // ---- Delete ----
 const handleDelete = async (data) => {
   try {
@@ -641,7 +608,7 @@ onMounted(() => {
 }
 
 .edit-panel {
-  width: 380px;
+  width: 50%;
   flex-shrink: 0;
   border: 1px solid var(--el-border-color-light, #e4e7ed);
   border-radius: 4px;

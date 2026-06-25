@@ -1,6 +1,9 @@
 <template>
   <div>
-    <LocaleSwitcher />
+    <LocaleSwitcher
+      entity-type="site"
+      :on-translated="loadSite"
+    />
 
     <div class="gva-search-box">
       <div class="gva-table-box">

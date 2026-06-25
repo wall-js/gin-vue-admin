@@ -1,6 +1,11 @@
 <template>
   <div>
-    <LocaleSwitcher />
+    <LocaleSwitcher
+      entity-type="menu"
+      :get-entity-id="() => selectedNode?.id"
+      :can-translate="() => !!selectedNode"
+      :on-translated="loadTree"
+    />
 
     <div class="gva-search-box">
       <div style="margin-bottom: 12px;">
@@ -28,6 +33,7 @@
               :expand-on-click-node="false"
               :allow-drop="allowDrop"
               @node-click="handleNodeClick"
+              @node-drag-start="handleDragStart"
               @node-drop="handleNodeDrop"
               v-loading="dragging"
             >
@@ -114,6 +120,21 @@
               </el-form-item>
               <el-form-item label="Slug" required>
                 <el-input v-model="itemEditForm.slug" placeholder="URL slug" />
+              </el-form-item>
+              <el-form-item label="所属容器">
+                <el-select
+                  v-model="itemEditContainerId"
+                  filterable
+                  placeholder="选择所属容器"
+                  style="width: 100%;"
+                >
+                  <el-option
+                    v-for="c in containerOptions"
+                    :key="c.id"
+                    :label="getI18nText(c.name) || c.slug"
+                    :value="c.id"
+                  />
+                </el-select>
               </el-form-item>
 
               <el-divider content-position="left">链接配置</el-divider>
@@ -270,6 +291,7 @@ const getItemMeta = (metaJson) => {
 // ---- Tree Data ----
 const loading = ref(false)
 const dragging = ref(false)
+const dragStartContainerId = ref(null) // 拖拽开始时的原始容器 ID
 const treeData = ref([])
 const flatNodes = ref([]) // flat list of all nodes for lookup
 
@@ -352,6 +374,7 @@ const containerEditName = computed({
 // ---- Item Edit Form ----
 const itemEditForm = ref({ name: {}, slug: '', sortOrder: 0 })
 const itemEditMeta = ref({ type: 'url', url: '', target: '_self', object_id: 0 })
+const itemEditContainerId = ref(0)
 const itemEditName = computed({
   get() {
     const obj = itemEditForm.value.name
@@ -381,6 +404,7 @@ watch(selectedNode, (node) => {
       sortOrder: node.sortOrder || 0
     }
     itemEditMeta.value = { ...{ type: 'url', url: '', target: '_self', object_id: 0 }, ...getItemMeta(node.metaJson) }
+    itemEditContainerId.value = findContainerId(node.id) || 0
   }
 })
 
@@ -412,6 +436,11 @@ const handleSaveContainer = async () => {
   }
 }
 
+// ---- Container options for item parent selector ----
+const containerOptions = computed(() => {
+  return treeData.value.filter(n => n.isContainer)
+})
+
 // ---- Save Item ----
 const handleSaveItem = async () => {
   if (!selectedId.value) return
@@ -422,6 +451,11 @@ const handleSaveItem = async () => {
       slug: itemEditForm.value.slug,
       sortOrder: itemEditForm.value.sortOrder,
       metaJson: JSON.stringify(itemEditMeta.value)
+    }
+    // If container changed, include new containerId in data
+    const currentContainerId = findContainerId(selectedId.value) || 0
+    if (itemEditContainerId.value && itemEditContainerId.value !== currentContainerId) {
+      data.containerId = itemEditContainerId.value
     }
     const res = await updateMenuItem(selectedId.value, data)
     if (res.code === 0) {
@@ -440,43 +474,50 @@ const handleSaveItem = async () => {
 }
 
 // ---- Drag & Drop ----
-const allowDrop = (draggingNode, dropNode, type) => {
-  // Containers can only be reordered at root level (prev/next), never nested
-  if (draggingNode.data.isContainer) {
-    return type !== 'inner' && dropNode.data.isContainer
+const handleDragStart = (node) => {
+  // 在 DOM 变更前记录菜单项的原始容器 ID
+  if (!node.data.isContainer) {
+    dragStartContainerId.value = findContainerId(node.data.id)
+  } else {
+    dragStartContainerId.value = null
   }
-  // Items can be reordered anywhere except becoming container siblings
-  // Allow: prev/next to items, inner of items, prev/next to items inside containers
-  return true
+}
+
+const allowDrop = (draggingNode, dropNode, type) => {
+  // 只允许同级拖放排序（prev/next），不允许嵌套改变父级
+  if (type === 'inner') return false
+  // 容器只能与容器互换
+  if (draggingNode.data.isContainer) return dropNode.data.isContainer
+  // 菜单项只能与菜单项互换
+  return !dropNode.data.isContainer
 }
 
 const handleNodeDrop = async (draggingNode, dropNode, dropType) => {
   const moves = []
 
   if (draggingNode.data.isContainer) {
-    // Container reorder: update sortOrder among containers
+    // 容器同级排序
     const containerSiblings = dropNode.parent?.childNodes || treeRef.value?.store?.root?.childNodes || []
     for (let i = 0; i < containerSiblings.length; i++) {
-      const sib = containerSiblings[i]
-      moves.push({ id: sib.data.id, parentId: null, sortOrder: i })
+      moves.push({ id: containerSiblings[i].data.id, parentId: null, sortOrder: i })
     }
   } else {
-    // Item drop: compute new parentId and sortOrder
-    let newParentId
-    if (dropType === 'inner') {
-      newParentId = dropNode.data.id
-    } else {
-      // prev/next: same parent as dropNode
-      newParentId = dropNode.parent?.data?.id || 0
+    // 菜单项排序 — 新容器下的所有子项
+    const newSiblings = dropNode.parent?.childNodes || []
+    const newParentId = dropNode.parent?.data?.id || 0
+    for (let i = 0; i < newSiblings.length; i++) {
+      moves.push({ id: newSiblings[i].data.id, parentId: newParentId, sortOrder: i })
     }
 
-    const siblings = dropType === 'inner'
-      ? (dropNode.childNodes || [])
-      : (dropNode.parent?.childNodes || [])
-
-    for (let i = 0; i < siblings.length; i++) {
-      const sib = siblings[i]
-      moves.push({ id: sib.data.id, parentId: newParentId, sortOrder: i })
+    // 跨容器拖拽时，旧容器的剩余子项也需要重新计算 sortOrder
+    const oldContainerId = dragStartContainerId.value
+    if (oldContainerId && oldContainerId !== newParentId) {
+      const oldContainerNode = treeRef.value?.getNode(oldContainerId)
+      if (oldContainerNode && oldContainerNode.childNodes) {
+        for (let i = 0; i < oldContainerNode.childNodes.length; i++) {
+          moves.push({ id: oldContainerNode.childNodes[i].data.id, parentId: oldContainerId, sortOrder: i })
+        }
+      }
     }
   }
 
@@ -676,7 +717,7 @@ onMounted(() => {
 }
 
 .edit-panel {
-  width: 400px;
+  width: 50%;
   flex-shrink: 0;
   border: 1px solid var(--el-border-color-light, #e4e7ed);
   border-radius: 4px;
