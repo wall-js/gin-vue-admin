@@ -72,6 +72,15 @@ func Menu(ctx context.Context) {
 					Sort:      5,
 					Meta:      model.Meta{Title: "菜单管理", Icon: "menu"},
 				},
+				{
+					ParentId:  0,
+					Path:      "cmsMedia",
+					Name:      "cmsMedia",
+					Hidden:    false,
+					Component: "plugin/uni/cms/view/media.vue",
+					Sort:      6,
+					Meta:      model.Meta{Title: "媒体库", Icon: "picture"},
+				},
 			},
 		},
 		{

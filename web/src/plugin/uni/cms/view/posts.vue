@@ -177,7 +177,7 @@ import PostStatusTag from '../components/PostStatusTag.vue'
 import TermSelector from '../components/TermSelector.vue'
 import CategoryTreeSelect from '../components/CategoryTreeSelect.vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
-import RichEdit from '@/components/richtext/rich-edit.vue'
+import RichEdit from '../components/CoreRichEdit.vue'
 import { listPosts, getPost, createPost, updatePost, deletePost } from '../api/post.js'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
