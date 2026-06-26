@@ -55,7 +55,7 @@
   editorConfig.MENU_CONF['uploadImage'] = {
     async customUpload(file, insertFn) {
       try {
-        const res = await uploadFileToCore(file, { noSave: true })
+        const res = await uploadFileToCore(file)
         if (res.code === 0) {
           const url = res.data.file.url
           const fullUrl = url.startsWith('http') ? url : '/api/v1/core' + url

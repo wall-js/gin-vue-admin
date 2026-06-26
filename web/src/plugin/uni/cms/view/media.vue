@@ -96,8 +96,9 @@
                 >{{ scope.row.tag }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column align="left" label="操作" width="200">
+            <el-table-column align="left" label="操作" width="260">
               <template #default="scope">
+                <el-button icon="Sort" type="primary" link @click="openMoveDialog(scope.row)">移动</el-button>
                 <el-button icon="Download" type="primary" link @click="downloadFile(scope.row)">下载</el-button>
                 <el-button icon="Delete" type="primary" link @click="deleteFileFunc(scope.row)">删除</el-button>
               </template>
@@ -141,6 +142,22 @@
       <template #footer>
         <el-button @click="closeAddCategoryDialog">取消</el-button>
         <el-button type="primary" @click="confirmAddCategory">确定</el-button>
+      </template>
+    </el-dialog>
+    <!-- 移动分类弹窗 -->
+    <el-dialog v-model="moveDialogVisible" title="移动到分类" width="420" draggable>
+      <el-tree-select
+        v-model="moveClassId"
+        :data="categories"
+        check-strictly
+        :props="defaultProps"
+        :render-after-expand="false"
+        placeholder="选择目标分类"
+        style="width: 100%"
+      />
+      <template #footer>
+        <el-button @click="moveDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmMoveFile">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -453,4 +470,26 @@ const closeAddCategoryDialog = () => {
 }
 
 fetchCategories()
+
+// ===== 移动分类 =====
+const moveDialogVisible = ref(false)
+const moveFileId = ref(0)
+const moveClassId = ref(0)
+
+const openMoveDialog = (row) => {
+  moveFileId.value = row.ID
+  moveClassId.value = row.classId || 0
+  moveDialogVisible.value = true
+}
+
+const confirmMoveFile = async () => {
+  const res = await editFileName({ ID: moveFileId.value, classId: moveClassId.value })
+  if (res.code === 0) {
+    ElMessage.success('移动成功')
+    moveDialogVisible.value = false
+    await getTableData()
+  } else {
+    ElMessage.error(res.msg || '移动失败')
+  }
+}
 </script>
