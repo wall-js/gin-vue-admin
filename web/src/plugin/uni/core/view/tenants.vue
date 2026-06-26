@@ -49,9 +49,15 @@
             <span style="font-weight: 500;">{{ row.name }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="slug" label="标识 (Slug)" width="160">
+        <el-table-column prop="slug" label="标识 (Slug)" width="140">
           <template #default="{ row }">
             <el-tag size="small" type="info">{{ row.slug }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="ownerId" label="所有者" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.ownerId" size="small" type="warning">UID {{ row.ownerId }}</el-tag>
+            <span v-else style="color: #999;">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="contact" label="联系人" width="120">
@@ -121,6 +127,12 @@
           <el-input v-model="formData.slug" placeholder="英文标识，如 my-tenant" :disabled="drawerType === 'update'" />
           <div v-if="drawerType === 'create'" style="color: #999; font-size: 12px; margin-top: 4px;">
             仅允许小写字母、数字和短横线，创建后不可修改
+          </div>
+        </el-form-item>
+        <el-form-item label="所有者ID" prop="ownerId">
+          <el-input-number v-model="formData.ownerId" :min="0" placeholder="所有者用户 ID" style="width: 100%;" />
+          <div style="color: #999; font-size: 12px; margin-top: 4px;">
+            具有该租户下所有权限的用户，0 表示未指定
           </div>
         </el-form-item>
         <el-form-item label="联系人">
@@ -227,6 +239,7 @@ const editingId = ref(0)
 const formData = reactive({
   name: '',
   slug: '',
+  ownerId: 0,
   contact: '',
   email: '',
   status: 1,
@@ -243,6 +256,7 @@ const formRules = {
 const resetForm = () => {
   formData.name = ''
   formData.slug = ''
+  formData.ownerId = 0
   formData.contact = ''
   formData.email = ''
   formData.status = 1
@@ -260,6 +274,7 @@ const openDrawer = async (type, row) => {
         const d = res.data
         formData.name = d.name || ''
         formData.slug = d.slug || ''
+        formData.ownerId = d.ownerId || 0
         formData.contact = d.contact || ''
         formData.email = d.email || ''
         formData.status = d.status || 1
@@ -286,6 +301,7 @@ const handleSave = async () => {
     const data = {
       name: formData.name,
       slug: formData.slug,
+      ownerId: formData.ownerId,
       contact: formData.contact,
       email: formData.email,
     }
