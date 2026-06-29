@@ -54,9 +54,9 @@
             <el-tag size="small" type="info">{{ row.slug }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="ownerId" label="所有者" width="100" align="center">
+        <el-table-column prop="ownerId" label="所有者" width="140" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.ownerId" size="small" type="warning">UID {{ row.ownerId }}</el-tag>
+            <span v-if="row.ownerId">{{ userMap[row.ownerId] || `UID ${row.ownerId}` }}</span>
             <span v-else style="color: #999;">-</span>
           </template>
         </el-table-column>
@@ -129,10 +129,27 @@
             仅允许小写字母、数字和短横线，创建后不可修改
           </div>
         </el-form-item>
-        <el-form-item label="所有者ID" prop="ownerId">
-          <el-input-number v-model="formData.ownerId" :min="0" placeholder="所有者用户 ID" style="width: 100%;" />
+        <el-form-item label="所有者" prop="ownerId">
+          <el-select
+            v-model="formData.ownerId"
+            filterable
+            remote
+            reserve-keyword
+            clearable
+            placeholder="搜索用户名或昵称"
+            :remote-method="handleSearchUser"
+            :loading="userSearchLoading"
+            style="width: 100%;"
+          >
+            <el-option
+              v-for="u in userOptions"
+              :key="u.ID"
+              :label="`${u.nickName} (${u.userName})`"
+              :value="u.ID"
+            />
+          </el-select>
           <div style="color: #999; font-size: 12px; margin-top: 4px;">
-            具有该租户下所有权限的用户，0 表示未指定
+            具有该租户下所有权限的用户
           </div>
         </el-form-item>
         <el-form-item label="联系人">
@@ -162,6 +179,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import { listTenants, getTenant, createTenant, updateTenant, deleteTenant } from '../api/tenant.js'
+import { getUserList } from '@/api/user'
 
 // ---- 搜索 ----
 const searchInfo = ref({ keyword: '', status: undefined })
@@ -172,6 +190,44 @@ const total = ref(0)
 // ---- 表格 ----
 const tableData = ref([])
 const tableLoading = ref(false)
+const userMap = ref({}) // userId -> 显示名
+
+// ---- 用户搜索（所有者选择） ----
+const userOptions = ref([])
+const userSearchLoading = ref(false)
+
+const handleSearchUser = async (query) => {
+  userSearchLoading.value = true
+  try {
+    const res = await getUserList({ page: 1, pageSize: 20, nickname: query, username: query })
+    if (res.code === 0) {
+      userOptions.value = res.data.list || []
+      // 缓存到 userMap
+      for (const u of userOptions.value) {
+        userMap.value[u.ID] = u.nickName || u.userName
+      }
+    }
+  } catch (e) {
+    console.error('搜索用户失败:', e)
+  } finally {
+    userSearchLoading.value = false
+  }
+}
+
+// 批量加载所有者用户名（一次性加载）
+const usersLoaded = ref(false)
+const loadAllUsers = async () => {
+  if (usersLoaded.value) return
+  try {
+    const res = await getUserList({ page: 1, pageSize: 100 })
+    if (res.code === 0 && res.data.list) {
+      for (const u of res.data.list) {
+        userMap.value[u.ID] = u.nickName || u.userName
+      }
+      usersLoaded.value = true
+    }
+  } catch (e) { /* ignore */ }
+}
 
 const loadData = async () => {
   tableLoading.value = true
@@ -190,6 +246,9 @@ const loadData = async () => {
     if (res.code === 0) {
       tableData.value = res.data.items || []
       total.value = res.data.total || 0
+      // 加载所有者用户名
+      const hasOwners = tableData.value.some(t => t.ownerId)
+      if (hasOwners) loadAllUsers()
     }
   } catch (e) {
     console.error('加载租户列表失败:', e)
@@ -239,7 +298,7 @@ const editingId = ref(0)
 const formData = reactive({
   name: '',
   slug: '',
-  ownerId: 0,
+  ownerId: null,
   contact: '',
   email: '',
   status: 1,
@@ -256,7 +315,7 @@ const formRules = {
 const resetForm = () => {
   formData.name = ''
   formData.slug = ''
-  formData.ownerId = 0
+  formData.ownerId = null
   formData.contact = ''
   formData.email = ''
   formData.status = 1
@@ -274,10 +333,16 @@ const openDrawer = async (type, row) => {
         const d = res.data
         formData.name = d.name || ''
         formData.slug = d.slug || ''
-        formData.ownerId = d.ownerId || 0
+        formData.ownerId = d.ownerId || null
         formData.contact = d.contact || ''
         formData.email = d.email || ''
         formData.status = d.status || 1
+        // 预加载当前所有者到下拉选项
+        if (d.ownerId && userMap.value[d.ownerId]) {
+          userOptions.value = [{ ID: d.ownerId, nickName: userMap.value[d.ownerId], userName: '' }]
+        } else if (d.ownerId) {
+          await handleSearchUser('') // 加载用户列表
+        }
       }
     } catch (e) {
       console.error('加载租户详情失败:', e)
@@ -301,7 +366,7 @@ const handleSave = async () => {
     const data = {
       name: formData.name,
       slug: formData.slug,
-      ownerId: formData.ownerId,
+      ownerId: formData.ownerId || 0,
       contact: formData.contact,
       email: formData.email,
     }

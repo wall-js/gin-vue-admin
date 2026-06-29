@@ -44,7 +44,7 @@ export default ({ mode }) => {
     }
   }
 
-  const base = "/admin/"
+  const base = process.env.VITE_BASE || '/'
   const root = "./"
   const outDir = "dist"
 
