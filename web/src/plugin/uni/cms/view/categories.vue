@@ -9,7 +9,7 @@
 
     <div class="gva-search-box">
       <div style="margin-bottom: 12px;">
-        <h2 style="margin: 0;">{{ typeLabel }}管理</h2>
+        <h2 style="margin: 0;">{{ t('plugins.uni.categories.management', { type: typeLabel }) }}</h2>
       </div>
 
       <!-- 树形模式（分类） -->
@@ -19,7 +19,7 @@
           <div class="tree-toolbar">
             <el-button type="primary" size="small" @click="handleAddRoot">
               <el-icon style="margin-right: 4px;"><Plus /></el-icon>
-              新增顶级{{ typeLabel }}
+              {{ t('plugins.uni.categories.newRoot', { type: typeLabel }) }}
             </el-button>
           </div>
 
@@ -42,15 +42,15 @@
                   <span class="node-label">{{ getI18nText(data.name) }}</span>
                   <span class="node-slug">{{ data.slug }}</span>
                   <span class="node-actions">
-                    <el-button type="primary" link size="small" @click.stop="handleAddChild(data)" title="添加子项">
+                    <el-button type="primary" link size="small" @click.stop="handleAddChild(data)" :title="t('plugins.uni.categories.addChild')">
                       <el-icon><Plus /></el-icon>
                     </el-button>
                     <el-popconfirm
-                      :title="`确定删除「${getI18nText(data.name)}」及其子项？`"
+                      :title="t('plugins.uni.categories.deleteConfirm', { name: getI18nText(data.name) })"
                       @confirm="handleDelete(data)"
                     >
                       <template #reference>
-                        <el-button type="danger" link size="small" @click.stop title="删除">
+                        <el-button type="danger" link size="small" @click.stop :title="t('plugins.uni.delete')">
                           <el-icon><Delete /></el-icon>
                         </el-button>
                       </template>
@@ -62,23 +62,23 @@
           </div>
 
           <div v-if="!loading && treeData.length === 0" class="tree-empty">
-            <el-empty :description="`暂无${typeLabel}，点击上方按钮新增`" :image-size="60" />
+            <el-empty :description="t('plugins.uni.categories.emptyHint', { type: typeLabel })" :image-size="60" />
           </div>
         </div>
 
         <!-- Right: Edit Panel -->
         <div class="edit-panel" v-if="selectedNode">
-          <h3 style="margin: 0 0 16px 0;">编辑{{ typeLabel }}</h3>
+          <h3 style="margin: 0 0 16px 0;">{{ t('plugins.uni.categories.edit', { type: typeLabel }) }}</h3>
           <el-form :model="editForm" label-width="70px" size="default">
-            <el-form-item v-if="hierarchical" label="父级">
+            <el-form-item v-if="hierarchical" :label="t('plugins.uni.categories.parent')">
               <el-select
                 v-model="editForm.parentId"
                 filterable
-                placeholder="顶级（无父级）"
+                :placeholder="t('plugins.uni.categories.topLevel')"
                 clearable
                 style="width: 100%;"
               >
-                <el-option label="顶级（无父级）" :value="0" />
+                <el-option :label="t('plugins.uni.categories.topLevel')" :value="0" />
                 <el-option
                   v-for="opt in parentOptions"
                   :key="opt.id"
@@ -87,26 +87,26 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="名称" required>
-              <el-input v-model="editName" :placeholder="`${typeLabel}名称`" />
+            <el-form-item :label="t('plugins.uni.categories.name')" required>
+              <el-input v-model="editName" :placeholder="t('plugins.uni.categories.namePlaceholder', { type: typeLabel })" />
             </el-form-item>
             <el-form-item label="Slug" required>
               <el-input v-model="editForm.slug" placeholder="URL slug" />
             </el-form-item>
-            <el-form-item label="描述">
-              <el-input v-model="editDescription" type="textarea" :rows="3" placeholder="可选描述" />
+            <el-form-item :label="t('plugins.uni.categories.description')">
+              <el-input v-model="editDescription" type="textarea" :rows="3" :placeholder="t('plugins.uni.categories.optionalDesc')" />
             </el-form-item>
-            <el-form-item label="排序">
+            <el-form-item :label="t('plugins.uni.categories.sortOrder')">
               <el-input-number v-model="editForm.sortOrder" :min="0" />
             </el-form-item>
           </el-form>
           <div class="edit-actions">
-            <el-button @click="clearSelection">取消</el-button>
-            <el-button type="primary" @click="handleSaveEdit" :loading="saving">保存</el-button>
+            <el-button @click="clearSelection">{{ t('plugins.uni.cancel') }}</el-button>
+            <el-button type="primary" @click="handleSaveEdit" :loading="saving">{{ t('plugins.uni.save') }}</el-button>
           </div>
         </div>
         <div class="edit-panel edit-placeholder" v-else>
-          <el-empty description="选择左侧节点进行编辑" :image-size="60" />
+          <el-empty :description="t('plugins.uni.categories.selectNodeHint')" :image-size="60" />
         </div>
       </div>
 
@@ -116,7 +116,7 @@
           <div class="tree-toolbar">
             <el-button type="primary" size="small" @click="handleAddRoot">
               <el-icon style="margin-right: 4px;"><Plus /></el-icon>
-              新增{{ typeLabel }}
+              {{ t('plugins.uni.categories.new', { type: typeLabel }) }}
             </el-button>
           </div>
 
@@ -138,11 +138,11 @@
                   <span class="node-slug">{{ data.slug }}</span>
                   <span class="node-actions">
                     <el-popconfirm
-                      :title="`确定删除「${getI18nText(data.name)}」？`"
+                      :title="t('plugins.uni.categories.deleteConfirmFlat', { name: getI18nText(data.name) })"
                       @confirm="handleDelete(data)"
                     >
                       <template #reference>
-                        <el-button type="danger" link size="small" @click.stop title="删除">
+                        <el-button type="danger" link size="small" @click.stop :title="t('plugins.uni.delete')">
                           <el-icon><Delete /></el-icon>
                         </el-button>
                       </template>
@@ -154,33 +154,33 @@
           </div>
 
           <div v-if="!loading && flatTerms.length === 0" class="tree-empty">
-            <el-empty :description="`暂无${typeLabel}，点击上方按钮新增`" :image-size="60" />
+            <el-empty :description="t('plugins.uni.categories.emptyHint', { type: typeLabel })" :image-size="60" />
           </div>
         </div>
 
         <div class="edit-panel" v-if="selectedNode">
-          <h3 style="margin: 0 0 16px 0;">编辑{{ typeLabel }}</h3>
+          <h3 style="margin: 0 0 16px 0;">{{ t('plugins.uni.categories.edit', { type: typeLabel }) }}</h3>
           <el-form :model="editForm" label-width="70px" size="default">
-            <el-form-item label="名称" required>
-              <el-input v-model="editName" :placeholder="`${typeLabel}名称`" />
+            <el-form-item :label="t('plugins.uni.categories.name')" required>
+              <el-input v-model="editName" :placeholder="t('plugins.uni.categories.namePlaceholder', { type: typeLabel })" />
             </el-form-item>
             <el-form-item label="Slug" required>
               <el-input v-model="editForm.slug" placeholder="URL slug" />
             </el-form-item>
-            <el-form-item label="描述">
-              <el-input v-model="editDescription" type="textarea" :rows="3" placeholder="可选描述" />
+            <el-form-item :label="t('plugins.uni.categories.description')">
+              <el-input v-model="editDescription" type="textarea" :rows="3" :placeholder="t('plugins.uni.categories.optionalDesc')" />
             </el-form-item>
-            <el-form-item label="排序">
+            <el-form-item :label="t('plugins.uni.categories.sortOrder')">
               <el-input-number v-model="editForm.sortOrder" :min="0" />
             </el-form-item>
           </el-form>
           <div class="edit-actions">
-            <el-button @click="clearSelection">取消</el-button>
-            <el-button type="primary" @click="handleSaveEdit" :loading="saving">保存</el-button>
+            <el-button @click="clearSelection">{{ t('plugins.uni.cancel') }}</el-button>
+            <el-button type="primary" @click="handleSaveEdit" :loading="saving">{{ t('plugins.uni.save') }}</el-button>
           </div>
         </div>
         <div class="edit-panel edit-placeholder" v-else>
-          <el-empty description="选择左侧标签进行编辑" :image-size="60" />
+          <el-empty :description="t('plugins.uni.categories.selectTagHint')" :image-size="60" />
         </div>
       </div>
     </div>
@@ -188,27 +188,27 @@
     <!-- Quick Create Dialog -->
     <el-dialog
       v-model="createDialogVisible"
-      :title="`新增${typeLabel}`"
+      :title="t('plugins.uni.categories.new', { type: typeLabel })"
       width="500px"
       :close-on-click-modal="false"
     >
       <el-form :model="createForm" label-width="70px">
-        <el-form-item label="名称" required>
-          <el-input v-model="createName" :placeholder="`${typeLabel}名称`" />
+        <el-form-item :label="t('plugins.uni.categories.name')" required>
+          <el-input v-model="createName" :placeholder="t('plugins.uni.categories.namePlaceholder', { type: typeLabel })" />
         </el-form-item>
         <el-form-item label="Slug" required>
           <el-input v-model="createForm.slug" placeholder="URL slug" />
         </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="createDescription" type="textarea" :rows="2" placeholder="可选" />
+        <el-form-item :label="t('plugins.uni.categories.description')">
+          <el-input v-model="createDescription" type="textarea" :rows="2" :placeholder="t('plugins.uni.optional')" />
         </el-form-item>
-        <el-form-item label="排序">
+        <el-form-item :label="t('plugins.uni.categories.sortOrder')">
           <el-input-number v-model="createForm.sortOrder" :min="0" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleCreate" :loading="saving">保存</el-button>
+        <el-button @click="createDialogVisible = false">{{ t('plugins.uni.cancel') }}</el-button>
+        <el-button type="primary" @click="handleCreate" :loading="saving">{{ t('plugins.uni.save') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -216,6 +216,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Plus, Delete } from '@element-plus/icons-vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
@@ -226,8 +227,9 @@ const props = defineProps({
   termType: { type: String, default: 'category' }
 })
 
+const { t } = useI18n()
 const cmsLocaleStore = useCmsLocaleStore()
-const typeLabel = computed(() => props.termType === 'category' ? '分类' : '标签')
+const typeLabel = computed(() => props.termType === 'category' ? t('plugins.uni.categories.category') : t('plugins.uni.categories.tag'))
 const hierarchical = computed(() => props.termType === 'category')
 
 // ---- i18n helpers ----
@@ -376,14 +378,14 @@ const handleSaveEdit = async () => {
     }
     const res = await updateTerm(selectedId.value, data)
     if (res.code === 0) {
-      ElMessage.success('保存成功')
+      ElMessage.success(t('plugins.uni.categories.saveSuccess'))
       await loadTerms()
       await nextTick()
       if (activeTreeRef.value && selectedId.value) {
         activeTreeRef.value.setCurrentKey(selectedId.value)
       }
     } else {
-      ElMessage.error(res.msg || '保存失败')
+      ElMessage.error(res.msg || t('plugins.uni.saveFailed'))
     }
   } catch (e) {
     console.error('保存失败:', e)
@@ -415,10 +417,10 @@ const handleFlatNodeDrop = async (draggingNode, dropNode, dropType) => {
   try {
     const res = await batchReorderTerms(moves)
     if (res.code === 0) {
-      ElMessage.success('排序已更新')
+      ElMessage.success(t('plugins.uni.categories.sortUpdated'))
       await loadTerms()
     } else {
-      ElMessage.error(res.msg || '排序失败')
+      ElMessage.error(res.msg || t('plugins.uni.categories.sortFailed'))
       await loadTerms()
     }
   } catch (e) {
@@ -443,14 +445,14 @@ const handleNodeDrop = async (draggingNode, dropNode, dropType) => {
   try {
     const res = await batchReorderTerms(moves)
     if (res.code === 0) {
-      ElMessage.success('排序已更新')
+      ElMessage.success(t('plugins.uni.categories.sortUpdated'))
       await loadTerms()
       await nextTick()
       if (activeTreeRef.value && selectedId.value) {
         activeTreeRef.value.setCurrentKey(selectedId.value)
       }
     } else {
-      ElMessage.error(res.msg || '排序失败')
+      ElMessage.error(res.msg || t('plugins.uni.categories.sortFailed'))
       await loadTerms()
     }
   } catch (e) {
@@ -525,7 +527,7 @@ const handleCreate = async () => {
     }
     const res = await createTerm(data)
     if (res.code === 0) {
-      ElMessage.success('创建成功')
+      ElMessage.success(t('plugins.uni.categories.createSuccess'))
       createDialogVisible.value = false
       await loadTerms()
       // Auto-select the newly created node
@@ -539,7 +541,7 @@ const handleCreate = async () => {
         }
       }
     } else {
-      ElMessage.error(res.msg || '创建失败')
+      ElMessage.error(res.msg || t('plugins.uni.loadFailed'))
     }
   } catch (e) {
     console.error('创建失败:', e)
@@ -553,13 +555,13 @@ const handleDelete = async (data) => {
   try {
     const res = await deleteTerm(data.id)
     if (res.code === 0) {
-      ElMessage.success('删除成功')
+      ElMessage.success(t('plugins.uni.deleteSuccess'))
       if (selectedId.value === data.id) {
         selectedId.value = null
       }
       await loadTerms()
     } else {
-      ElMessage.error(res.msg || '删除失败')
+      ElMessage.error(res.msg || t('plugins.uni.loadFailed'))
     }
   } catch (e) {
     console.error('删除失败:', e)

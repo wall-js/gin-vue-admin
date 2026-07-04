@@ -61,10 +61,10 @@
           const fullUrl = url.startsWith('http') ? url : '/api/v1/core' + url
           insertFn(fullUrl, res.data.file.name)
         } else {
-          ElMessage.error(res.msg || '图片上传失败')
+          ElMessage.error(res.msg || t('components.richtext.imageUploadFailed'))
         }
       } catch (e) {
-        ElMessage.error('图片上传失败: ' + (e.message || '网络错误'))
+        ElMessage.error(t('components.richtext.imageUploadFailed') + ': ' + (e.message || t('components.richtext.networkError')))
       }
     }
   }

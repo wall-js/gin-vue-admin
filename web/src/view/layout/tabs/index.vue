@@ -17,7 +17,7 @@
       <el-tab-pane
         v-for="item in historys"
         :key="getFmtString(item)"
-        :label="item.meta.title"
+        :label="t(item.meta.title)"
         :name="getFmtString(item)"
         :tab="item"
         class="border-none"
@@ -37,7 +37,7 @@
                   : 'text-gray-600 dark:text-slate-400'
               "
             />
-            {{ fmtTitle(item.meta.title, item) }}</span
+            {{ t(fmtTitle(item.meta.title, item)) }}</span
           >
         </template>
       </el-tab-pane>

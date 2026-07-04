@@ -8,48 +8,76 @@
     <div class="gva-search-box">
       <div class="gva-table-box">
         <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-          <h2 style="margin: 0;">站点设置</h2>
+          <h2 style="margin: 0;">{{ t('plugins.uni.site.settings') }}</h2>
           <div>
-            <el-button type="primary" :loading="saveLoading" @click="handleSave">保存</el-button>
+            <el-button type="primary" :loading="saveLoading" @click="handleSave">{{ t('plugins.uni.save') }}</el-button>
           </div>
         </div>
 
         <el-form ref="formRef" :model="formData" label-width="120px" v-loading="pageLoading">
           <!-- 基本信息 -->
-          <el-divider content-position="left">基本信息</el-divider>
+          <el-divider content-position="left">{{ t('plugins.uni.site.basicInfo') }}</el-divider>
 
-          <el-form-item label="站点名称">
-            <el-input v-model="i18n('name').value" placeholder="请输入站点名称" />
+          <el-form-item :label="t('plugins.uni.site.siteName')">
+            <el-input v-model="i18n('name').value" :placeholder="t('plugins.uni.site.enterSiteName')" />
           </el-form-item>
 
-          <el-form-item label="站点描述">
-            <el-input v-model="i18n('description').value" type="textarea" :rows="3" placeholder="请输入站点描述" />
+          <el-form-item :label="t('plugins.uni.site.siteDescription')">
+            <el-input v-model="i18n('description').value" type="textarea" :rows="3" :placeholder="t('plugins.uni.site.enterSiteDescription')" />
           </el-form-item>
 
-          <el-form-item label="Logo URL">
-            <el-input v-model="i18n('logoUrl').value" placeholder="请输入 Logo URL" />
+          <el-form-item :label="t('plugins.uni.site.logoUrl')">
+            <el-input v-model="i18n('logoUrl').value" :placeholder="t('plugins.uni.site.enterLogoUrl')" />
           </el-form-item>
 
-          <el-form-item label="Favicon URL">
-            <el-input v-model="formData.faviconUrl" placeholder="请输入 Favicon URL" />
+          <el-form-item :label="t('plugins.uni.site.faviconUrl')">
+            <el-input v-model="formData.faviconUrl" :placeholder="t('plugins.uni.site.enterFaviconUrl')" />
           </el-form-item>
 
-          <el-form-item label="绑定域名">
-            <el-input v-model="formData.domain" placeholder="例如: www.example.com">
+          <el-form-item :label="t('plugins.uni.site.bindDomain')">
+            <el-input v-model="formData.domain" :placeholder="t('plugins.uni.site.domainPlaceholder')">
               <template #prepend>
                 <el-icon><Link /></el-icon>
               </template>
             </el-input>
             <div style="font-size: 12px; color: #909399; margin-top: 4px;">
-              绑定域名后，用户访问该域名时将自动加载此站点内容
+              {{ t('plugins.uni.site.domainNote') }}
+            </div>
+          </el-form-item>
+
+          <!-- TLS 证书 -->
+          <el-divider content-position="left">{{ t('plugins.uni.site.tlsCert') }}</el-divider>
+
+          <el-form-item :label="t('plugins.uni.site.certStatus')">
+            <template v-if="certInfo.certStatus > 0">
+              <el-tag :type="certStatusType(certInfo.certStatus)" size="small">{{ certStatusText(certInfo.certStatus) }}</el-tag>
+              <span style="margin-left: 8px; font-size: 12px; color: #999;">{{ certSourceText(certInfo.certSource) }}</span>
+              <span v-if="certInfo.certExpiresAt" style="margin-left: 8px; font-size: 12px; color: #999;">{{ t('plugins.uni.site.certExpiresPrefix') }} {{ certInfo.certExpiresAt.slice(0, 10) }}</span>
+            </template>
+            <span v-else style="color: #999; font-size: 13px;">{{ t('plugins.uni.site.notConfigured') }}</span>
+            <el-button type="primary" link style="margin-left: 12px;" @click="openCertDrawer">{{ t('plugins.uni.site.manageCert') }}</el-button>
+          </el-form-item>
+
+          <el-form-item :label="t('plugins.uni.site.autoIssue')">
+            <el-switch v-model="formData.tlsAuto" :active-value="1" :inactive-value="0"
+              :active-text="t('plugins.uni.site.autoIssueOn')" :inactive-text="t('plugins.uni.site.autoIssueOff')" />
+            <span style="margin-left: 12px; font-size: 12px; color: #999;">
+              {{ formData.tlsAuto ? t('plugins.uni.site.autoIssueNote') : t('plugins.uni.site.manualUploadNote') }}
+            </span>
+          </el-form-item>
+
+          <el-form-item :label="t('plugins.uni.site.acmeEmail')" v-if="formData.tlsAuto">
+            <el-input v-model="formData.tlsEmail" placeholder="admin@example.com" style="width: 280px;" />
+            <div style="font-size: 12px; color: #999; margin-top: 4px;">
+              {{ t('plugins.uni.site.acmeEmailNote') }}
             </div>
           </el-form-item>
 
           <!-- 语言设置 -->
-          <el-divider content-position="left">语言设置</el-divider>
+          <el-divider content-position="left">{{ t('plugins.uni.site.langSettings') }}</el-divider>
 
-          <el-form-item label="默认语言">
-            <el-select v-model="formData.locale" placeholder="请选择默认语言">
+          <el-form-item :label="t('plugins.uni.site.defaultLang')">
+            <el-select v-model="formData.locale" :placeholder="t('plugins.uni.site.selectDefaultLang')">
               <el-option label="中文" value="zh" />
               <el-option label="繁體中文" value="zh-TW" />
               <el-option label="English" value="en" />
@@ -58,8 +86,8 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="可用语言">
-            <el-select v-model="localesList" multiple placeholder="请选择可用语言">
+          <el-form-item :label="t('plugins.uni.site.availableLangs')">
+            <el-select v-model="localesList" multiple :placeholder="t('plugins.uni.site.selectAvailableLangs')">
               <el-option label="中文" value="zh" />
               <el-option label="繁體中文" value="zh-TW" />
               <el-option label="English" value="en" />
@@ -68,70 +96,112 @@
             </el-select>
           </el-form-item>
 
-          <el-form-item label="模板">
-            <el-input v-model="formData.template" placeholder="模板名称" />
+          <el-form-item :label="t('plugins.uni.site.template')">
+            <el-input v-model="formData.template" :placeholder="t('plugins.uni.site.templateName')" />
           </el-form-item>
 
           <!-- SEO 设置 -->
-          <el-divider content-position="left">SEO 设置</el-divider>
+          <el-divider content-position="left">{{ t('plugins.uni.site.seoSettings') }}</el-divider>
 
           <el-form-item label="Meta Title">
-            <el-input v-model="i18n('metaTitle').value" placeholder="请输入 SEO 标题" />
+            <el-input v-model="i18n('metaTitle').value" :placeholder="t('plugins.uni.site.enterSeoTitle')" />
           </el-form-item>
 
           <el-form-item label="Meta Description">
-            <el-input v-model="i18n('metaDescription').value" type="textarea" :rows="2" placeholder="请输入 SEO 描述" />
+            <el-input v-model="i18n('metaDescription').value" type="textarea" :rows="2" :placeholder="t('plugins.uni.site.enterSeoDescription')" />
           </el-form-item>
 
           <el-form-item label="Meta Keywords">
-            <el-input v-model="i18n('metaKeywords').value" placeholder="请输入 SEO 关键词" />
+            <el-input v-model="i18n('metaKeywords').value" :placeholder="t('plugins.uni.site.enterSeoKeywords')" />
           </el-form-item>
 
           <!-- 站点状态 -->
-          <el-divider content-position="left">站点设置</el-divider>
+          <el-divider content-position="left">{{ t('plugins.uni.site.otherSettings') }}</el-divider>
 
-          <el-form-item label="联系电话">
-            <el-input v-model="settingI18n('phone').value" placeholder="请输入联系电话" />
+          <el-form-item :label="t('plugins.uni.site.phone')">
+            <el-input v-model="settingI18n('phone').value" :placeholder="t('plugins.uni.site.enterPhone')" />
           </el-form-item>
 
-          <el-form-item label="联系邮箱">
-            <el-input v-model="settingI18n('email').value" placeholder="请输入联系邮箱" />
+          <el-form-item :label="t('plugins.uni.site.email')">
+            <el-input v-model="settingI18n('email').value" :placeholder="t('plugins.uni.site.enterEmail')" />
           </el-form-item>
 
-          <el-form-item label="地址">
-            <el-input v-model="settingI18n('address').value" placeholder="请输入地址" />
+          <el-form-item :label="t('plugins.uni.site.address')">
+            <el-input v-model="settingI18n('address').value" :placeholder="t('plugins.uni.site.enterAddress')" />
           </el-form-item>
 
-          <el-form-item label="版权信息">
-            <el-input v-model="settingI18n('copyright').value" placeholder="请输入版权信息" />
+          <el-form-item :label="t('plugins.uni.site.copyright')">
+            <el-input v-model="settingI18n('copyright').value" :placeholder="t('plugins.uni.site.enterCopyright')" />
           </el-form-item>
 
-          <el-form-item label="Footer HTML">
-            <el-input v-model="settingI18n('footer_html').value" type="textarea" :rows="4" placeholder="请输入 Footer HTML 代码" />
+          <el-form-item :label="t('plugins.uni.site.footerHtml')">
+            <el-input v-model="settingI18n('footer_html').value" type="textarea" :rows="4" :placeholder="t('plugins.uni.site.enterFooterHtml')" />
           </el-form-item>
 
-          <el-divider content-position="left">其他设置</el-divider>
+          <el-divider content-position="left">{{ t('plugins.uni.site.miscSettings') }}</el-divider>
 
-          <el-form-item label="站点状态">
+          <el-form-item :label="t('plugins.uni.site.siteStatus')">
             <el-radio-group v-model="formData.status">
-              <el-radio :value="1">正常运行</el-radio>
-              <el-radio :value="2">维护中</el-radio>
+              <el-radio :value="1">{{ t('plugins.uni.site.statusNormal') }}</el-radio>
+              <el-radio :value="2">{{ t('plugins.uni.site.statusMaintenance') }}</el-radio>
             </el-radio-group>
           </el-form-item>
         </el-form>
       </div>
     </div>
+
+    <!-- TLS 证书管理抽屉 -->
+    <el-drawer v-model="certDrawerVisible" :title="t('plugins.uni.site.certManagement')" size="520px" direction="rtl">
+      <div v-loading="certLoading">
+        <div v-if="certInfo.certStatus > 0" style="margin-bottom: 20px; padding: 16px; background: #f5f7fa; border-radius: 4px;">
+          <h4 style="margin: 0 0 12px 0;">{{ t('plugins.uni.site.currentCert') }}</h4>
+          <el-descriptions :column="1" size="small" border>
+            <el-descriptions-item :label="t('plugins.uni.site.certStatus')">
+              <el-tag :type="certStatusType(certInfo.certStatus)" size="small">{{ certStatusText(certInfo.certStatus) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item :label="t('plugins.uni.site.certSource')">{{ certSourceText(certInfo.certSource) }}</el-descriptions-item>
+            <el-descriptions-item :label="t('plugins.uni.site.certIssuedAt')" v-if="certInfo.certIssuedAt">{{ certInfo.certIssuedAt }}</el-descriptions-item>
+            <el-descriptions-item :label="t('plugins.uni.site.certExpiresAt')" v-if="certInfo.certExpiresAt">{{ certInfo.certExpiresAt }}</el-descriptions-item>
+            <el-descriptions-item :label="t('plugins.uni.site.certRenewedAt')" v-if="certInfo.certRenewedAt">{{ certInfo.certRenewedAt }}</el-descriptions-item>
+            <el-descriptions-item :label="t('plugins.uni.site.certFingerprint')" v-if="certInfo.certFingerprint">
+              <span style="font-family: monospace; font-size: 11px; word-break: break-all;">{{ certInfo.certFingerprint }}</span>
+            </el-descriptions-item>
+          </el-descriptions>
+          <div style="margin-top: 12px;">
+            <el-button type="danger" size="small" @click="handleClearCert">{{ t('plugins.uni.site.clearCert') }}</el-button>
+          </div>
+        </div>
+        <div v-else style="margin-bottom: 20px; padding: 16px; background: #f5f7fa; border-radius: 4px; text-align: center; color: #999;">
+          {{ t('plugins.uni.site.noCertNote') }}
+        </div>
+
+        <el-divider content-position="left">{{ t('plugins.uni.site.manualUpload') }}</el-divider>
+        <el-form label-width="80px">
+          <el-form-item :label="t('plugins.uni.site.certPem')">
+            <el-input v-model="certUploadForm.certPem" type="textarea" :rows="5" :placeholder="t('plugins.uni.site.certPemPlaceholder')" />
+          </el-form-item>
+          <el-form-item :label="t('plugins.uni.site.keyPem')">
+            <el-input v-model="certUploadForm.keyPem" type="textarea" :rows="5" :placeholder="t('plugins.uni.site.keyPemPlaceholder')" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="certUploadLoading" @click="handleUploadCert">{{ t('plugins.uni.site.uploadCert') }}</el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Link } from '@element-plus/icons-vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
-import { getSite, updateSite } from '../api/site.js'
+import { getSite, updateSite, getCert, uploadCert, clearCert } from '../api/site.js'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
+const { t } = useI18n()
 const cmsLocaleStore = useCmsLocaleStore()
 
 const pageLoading = ref(false)
@@ -150,8 +220,21 @@ const formData = ref({
   metaDescription: {},
   metaKeywords: {},
   settingsJson: {},
-  status: 1
+  status: 1,
+  tlsAuto: 0,
+  tlsEmail: ''
 })
+
+// TLS 证书
+const certDrawerVisible = ref(false)
+const certLoading = ref(false)
+const certUploadLoading = ref(false)
+const certInfo = ref({ certStatus: 0, certSource: 0 })
+const certUploadForm = ref({ certPem: '', keyPem: '' })
+
+const certStatusText = (s) => ({ 1: t('plugins.uni.site.certValid'), 2: t('plugins.uni.site.certExpiringSoon'), 3: t('plugins.uni.site.certExpired') }[s] || t('plugins.uni.unknown'))
+const certStatusType = (s) => ({ 1: 'success', 2: 'warning', 3: 'danger' }[s] || 'info')
+const certSourceText = (s) => ({ 1: t('plugins.uni.site.certSourceLetsEncrypt'), 2: t('plugins.uni.site.certSourceManual'), 3: t('plugins.uni.site.certSourceSelfSigned') }[s] || t('plugins.uni.unknown'))
 
 const localesList = computed({
   get() {
@@ -241,8 +324,12 @@ const loadSite = async () => {
         metaDescription: parseI18nField(data.metaDescription),
         metaKeywords: parseI18nField(data.metaKeywords),
         settingsJson: parseI18nField(data.settingsJson),
-        status: data.status || 1
+        status: data.status || 1,
+        tlsAuto: data.tlsAuto || 0,
+        tlsEmail: data.tlsEmail || ''
       }
+      // 加载证书信息
+      loadCertInfo()
     }
   } catch (e) {
     console.error('加载站点配置失败:', e)
@@ -268,16 +355,80 @@ const handleSave = async () => {
     }
     const res = await updateSite(data)
     if (res.code === 0) {
-      ElMessage.success('保存成功')
+      ElMessage.success(t('plugins.uni.saveSuccess'))
       // 刷新全局语言配置（可用语言可能已变更）
       await cmsLocaleStore.refresh()
     } else {
-      ElMessage.error(res.msg || '保存失败')
+      ElMessage.error(res.msg || t('plugins.uni.saveFailed'))
     }
   } catch (e) {
     console.error('保存失败:', e)
   } finally {
     saveLoading.value = false
+  }
+}
+
+// 加载证书信息
+const loadCertInfo = async () => {
+  try {
+    const res = await getCert()
+    if (res.code === 0) {
+      certInfo.value = res.data
+    } else {
+      certInfo.value = { certStatus: 0, certSource: 0 }
+    }
+  } catch {
+    certInfo.value = { certStatus: 0, certSource: 0 }
+  }
+}
+
+const openCertDrawer = () => {
+  certUploadForm.value = { certPem: '', keyPem: '' }
+  certDrawerVisible.value = true
+  loadCertInfo()
+}
+
+const handleUploadCert = async () => {
+  if (!certUploadForm.value.certPem || !certUploadForm.value.keyPem) {
+    ElMessage.warning(t('plugins.uni.site.fillCertAndKey'))
+    return
+  }
+  certUploadLoading.value = true
+  try {
+    const res = await uploadCert(certUploadForm.value)
+    if (res.code === 0) {
+      ElMessage.success(t('plugins.uni.site.certUploadSuccess'))
+      certInfo.value = res.data
+      certUploadForm.value = { certPem: '', keyPem: '' }
+    } else {
+      ElMessage.error(res.msg || t('plugins.uni.site.uploadFailed'))
+    }
+  } catch (e) {
+    console.error('上传证书失败:', e)
+    ElMessage.error(t('plugins.uni.site.certUploadFailed'))
+  } finally {
+    certUploadLoading.value = false
+  }
+}
+
+const handleClearCert = async () => {
+  try {
+    await ElMessageBox.confirm(t('plugins.uni.site.clearCertConfirm'), t('plugins.uni.site.clearCertTitle'), { type: 'warning' })
+  } catch { return }
+  certLoading.value = true
+  try {
+    const res = await clearCert()
+    if (res.code === 0) {
+      ElMessage.success(t('plugins.uni.site.certCleared'))
+      certInfo.value = { certStatus: 0, certSource: 0 }
+    } else {
+      ElMessage.error(res.msg || t('plugins.uni.site.clearCertFailed'))
+    }
+  } catch (e) {
+    console.error('清除证书失败:', e)
+    ElMessage.error(t('plugins.uni.site.clearCertFailed'))
+  } finally {
+    certLoading.value = false
   }
 }
 

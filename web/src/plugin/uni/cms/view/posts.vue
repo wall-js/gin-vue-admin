@@ -14,16 +14,16 @@
         <div class="list-search">
           <el-input
             v-model="searchInfo.search"
-            placeholder="搜索标题"
+            :placeholder="t('plugins.uni.posts.searchTitle')"
             clearable
             prefix-icon="Search"
             @clear="getTableData"
             @keyup.enter="getTableData"
           />
-          <el-select v-model="searchInfo.status" placeholder="全部状态" clearable style="width: 120px;" @change="getTableData">
-            <el-option label="草稿" :value="1" />
-            <el-option label="已发布" :value="2" />
-            <el-option label="已归档" :value="3" />
+          <el-select v-model="searchInfo.status" :placeholder="t('plugins.uni.posts.allStatus')" clearable style="width: 120px;" @change="getTableData">
+            <el-option :label="t('plugins.uni.postStatus.draft')" :value="1" />
+            <el-option :label="t('plugins.uni.postStatus.published')" :value="2" />
+            <el-option :label="t('plugins.uni.postStatus.archived')" :value="3" />
           </el-select>
           <el-button type="primary" @click="getTableData">
             <el-icon><Search /></el-icon>
@@ -33,7 +33,7 @@
         <!-- 新增按钮 -->
         <div class="list-actions">
           <el-button type="primary" size="small" @click="handleNew">
-            <el-icon><Plus /></el-icon> 新增文章
+            <el-icon><Plus /></el-icon> {{ t('plugins.uni.posts.newPost') }}
           </el-button>
           <el-button size="small" @click="refreshList" :icon="Refresh" circle />
         </div>
@@ -47,7 +47,7 @@
             :class="{ active: editingId === item.id }"
             @click="selectPost(item)"
           >
-            <div class="post-item-title">{{ getI18nText(item.title) || '(无标题)' }}</div>
+            <div class="post-item-title">{{ getI18nText(item.title) || t('plugins.uni.posts.noTitle') }}</div>
             <div class="post-item-meta">
               <PostStatusTag :status="item.status" />
               <span class="post-item-date">{{ formatDate(item.publishedAt) }}</span>
@@ -55,7 +55,7 @@
             <div class="post-item-slug">{{ item.slug }}</div>
           </div>
 
-          <el-empty v-if="!tableLoading && tableData.length === 0" description="暂无文章" />
+          <el-empty v-if="!tableLoading && tableData.length === 0" :description="t('plugins.uni.posts.noPosts')" />
         </div>
 
         <!-- 分页 -->
@@ -79,23 +79,23 @@
           <!-- 编辑头部 -->
           <div class="edit-header">
             <div class="edit-title">
-              <template v-if="editType === 'create'">新增文章</template>
+              <template v-if="editType === 'create'">{{ t('plugins.uni.posts.newPost') }}</template>
               <template v-else>
-                <span>编辑：</span>
-                <span class="edit-title-text">{{ getI18nText(formData.title) || '(无标题)' }}</span>
+                <span>{{ t('plugins.uni.posts.editPrefix') }}</span>
+                <span class="edit-title-text">{{ getI18nText(formData.title) || t('plugins.uni.posts.noTitle') }}</span>
               </template>
             </div>
             <div class="edit-actions">
-              <el-button @click="handleCancel">取消</el-button>
-              <el-button type="info" @click="handleSave(1)" :loading="saveLoading">保存草稿</el-button>
-              <el-button type="primary" @click="handleSave(2)" :loading="saveLoading">发布</el-button>
+              <el-button @click="handleCancel">{{ t('plugins.uni.cancel') }}</el-button>
+              <el-button type="info" @click="handleSave(1)" :loading="saveLoading">{{ t('plugins.uni.posts.saveDraft') }}</el-button>
+              <el-button type="primary" @click="handleSave(2)" :loading="saveLoading">{{ t('plugins.uni.posts.publish') }}</el-button>
               <el-popconfirm
                 v-if="editType === 'update'"
-                title="确定删除此文章？"
+                :title="t('plugins.uni.posts.deleteConfirm')"
                 @confirm="handleDelete"
               >
                 <template #reference>
-                  <el-button type="danger">删除</el-button>
+                  <el-button type="danger">{{ t('plugins.uni.delete') }}</el-button>
                 </template>
               </el-popconfirm>
             </div>
@@ -104,55 +104,55 @@
           <!-- 编辑表单 -->
           <el-scrollbar class="edit-scrollbar">
             <el-form ref="formRef" :model="formData" label-width="110px" v-loading="formLoading" class="edit-form">
-              <el-form-item label="标题" required>
-                <el-input v-model="i18n('title').value" placeholder="请输入标题" />
+              <el-form-item :label="t('plugins.uni.posts.title')" required>
+                <el-input v-model="i18n('title').value" :placeholder="t('plugins.uni.posts.enterTitle')" />
               </el-form-item>
 
-              <el-form-item label="Slug" required>
-                <el-input v-model="formData.slug" placeholder="请输入 URL Slug" />
+              <el-form-item :label="t('plugins.uni.posts.slug')" required>
+                <el-input v-model="formData.slug" :placeholder="t('plugins.uni.posts.enterSlug')" />
               </el-form-item>
 
-              <el-form-item label="摘要">
-                <el-input v-model="i18n('excerpt').value" type="textarea" :rows="2" placeholder="请输入摘要" />
+              <el-form-item :label="t('plugins.uni.posts.excerpt')">
+                <el-input v-model="i18n('excerpt').value" type="textarea" :rows="2" :placeholder="t('plugins.uni.posts.enterExcerpt')" />
               </el-form-item>
 
-              <el-form-item label="内容">
+              <el-form-item :label="t('plugins.uni.posts.content')">
                 <RichEdit v-if="editMode" :key="editingId" v-model="i18n('content').value" />
               </el-form-item>
 
-              <el-divider content-position="left">发布设置</el-divider>
+              <el-divider content-position="left">{{ t('plugins.uni.posts.publishSettings') }}</el-divider>
 
-              <el-form-item label="发布状态">
+              <el-form-item :label="t('plugins.uni.posts.publishStatus')">
                 <el-select v-model="formData.status">
-                  <el-option label="草稿" :value="1" />
-                  <el-option label="已发布" :value="2" />
+                  <el-option :label="t('plugins.uni.postStatus.draft')" :value="1" />
+                  <el-option :label="t('plugins.uni.postStatus.published')" :value="2" />
                 </el-select>
               </el-form-item>
 
-              <el-form-item label="分类">
-                <CategoryTreeSelect v-model="formData.categoryIds" type="category" :multiple="true" placeholder="选择分类" />
+              <el-form-item :label="t('plugins.uni.posts.category')">
+                <CategoryTreeSelect v-model="formData.categoryIds" type="category" :multiple="true" :placeholder="t('plugins.uni.posts.selectCategory')" />
               </el-form-item>
 
-              <el-form-item label="标签">
-                <TermSelector v-model="formData.tagIds" type="tag" placeholder="选择标签" />
+              <el-form-item :label="t('plugins.uni.posts.tags')">
+                <TermSelector v-model="formData.tagIds" type="tag" :placeholder="t('plugins.uni.posts.selectTags')" />
               </el-form-item>
 
-              <el-form-item label="排序">
+              <el-form-item :label="t('plugins.uni.posts.sortOrder')">
                 <el-input-number v-model="formData.sortOrder" :min="0" />
               </el-form-item>
 
-              <el-divider content-position="left">SEO 设置</el-divider>
+              <el-divider content-position="left">{{ t('plugins.uni.posts.seoSettings') }}</el-divider>
 
               <el-form-item label="Meta Title">
-                <el-input v-model="i18n('metaTitle').value" placeholder="SEO 标题" />
+                <el-input v-model="i18n('metaTitle').value" :placeholder="t('plugins.uni.posts.seoTitle')" />
               </el-form-item>
 
               <el-form-item label="Meta Description">
-                <el-input v-model="i18n('metaDescription').value" type="textarea" :rows="2" placeholder="SEO 描述" />
+                <el-input v-model="i18n('metaDescription').value" type="textarea" :rows="2" :placeholder="t('plugins.uni.posts.seoDescription')" />
               </el-form-item>
 
               <el-form-item label="Meta Keywords">
-                <el-input v-model="i18n('metaKeywords').value" placeholder="SEO 关键词" />
+                <el-input v-model="i18n('metaKeywords').value" :placeholder="t('plugins.uni.posts.seoKeywords')" />
               </el-form-item>
             </el-form>
           </el-scrollbar>
@@ -160,8 +160,8 @@
 
         <!-- 未选中状态 -->
         <div v-else class="edit-placeholder">
-          <el-empty description="选择左侧文章进行编辑，或点击「新增文章」创建">
-            <el-button type="primary" @click="handleNew">新增文章</el-button>
+          <el-empty :description="t('plugins.uni.posts.selectPostHint')">
+            <el-button type="primary" @click="handleNew">{{ t('plugins.uni.posts.newPost') }}</el-button>
           </el-empty>
         </div>
       </div>
@@ -171,6 +171,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Search, Plus, Refresh } from '@element-plus/icons-vue'
 import PostStatusTag from '../components/PostStatusTag.vue'
@@ -181,6 +182,7 @@ import RichEdit from '../components/CoreRichEdit.vue'
 import { listPosts, getPost, createPost, updatePost, deletePost } from '../api/post.js'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
 
+const { t } = useI18n()
 const cmsLocaleStore = useCmsLocaleStore()
 
 // 解析 I18nText，优先显示当前编辑语种的文本
@@ -372,7 +374,7 @@ const selectPost = async (item) => {
     }
   } catch (e) {
     console.error('加载文章详情失败:', e)
-    ElMessage.error('加载文章详情失败')
+    ElMessage.error(t('plugins.uni.posts.loadDetailFailed'))
   } finally {
     formLoading.value = false
   }
@@ -408,7 +410,7 @@ const handleSave = async (status) => {
       res = await updatePost(editingId.value, data)
     }
     if (res.code === 0) {
-      ElMessage.success(status === 2 ? '发布成功' : '保存成功')
+      ElMessage.success(status === 2 ? t('plugins.uni.posts.publishSuccess') : t('plugins.uni.saveSuccess'))
       getTableData()
       // 新增成功后切换到编辑模式
       if (editType.value === 'create' && res.data?.id) {
@@ -416,11 +418,11 @@ const handleSave = async (status) => {
         editType.value = 'update'
       }
     } else {
-      ElMessage.error(res.msg || '操作失败')
+      ElMessage.error(res.msg || t('plugins.uni.posts.operationFailed'))
     }
   } catch (e) {
     console.error('保存失败:', e)
-    ElMessage.error('保存失败')
+    ElMessage.error(t('plugins.uni.saveFailed'))
   } finally {
     saveLoading.value = false
   }
@@ -431,11 +433,11 @@ const handleDelete = async () => {
   try {
     const res = await deletePost(editingId.value)
     if (res.code === 0) {
-      ElMessage.success('删除成功')
+      ElMessage.success(t('plugins.uni.deleteSuccess'))
       handleCancel()
       getTableData()
     } else {
-      ElMessage.error(res.msg || '删除失败')
+      ElMessage.error(res.msg || t('plugins.uni.posts.deleteFailed'))
     }
   } catch (e) {
     console.error('删除失败:', e)

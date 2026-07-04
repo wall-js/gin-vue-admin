@@ -9,18 +9,20 @@
       <component :is="routerInfo.meta.icon" />
     </el-icon>
     <template v-else>
-      {{ isCollapse ? routerInfo.meta.title[0] : "" }}
+      {{ isCollapse ? t(routerInfo.meta.title)[0] : "" }}
     </template>
     <template #title>
-      {{ routerInfo.meta.title }}
+      {{ t(routerInfo.meta.title) }}
     </template>
   </el-menu-item>
 </template>
 
 <script setup>
 import {computed, inject} from 'vue'
+  import { useI18n } from 'vue-i18n'
   import { useAppStore } from '@/pinia'
   import { storeToRefs } from 'pinia'
+  const { t } = useI18n()
   const appStore = useAppStore()
   const { config } = storeToRefs(appStore)
 

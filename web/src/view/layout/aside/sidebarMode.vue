@@ -30,10 +30,10 @@
                 <component :is="item.meta.icon" />
               </el-icon>
               <template v-else>
-                {{ item.meta.title[0] }}
+                {{ t(item.meta.title)[0] }}
               </template>
               <template #title>
-                {{ item.meta.title }}
+                {{ t(item.meta.title) }}
               </template>
             </el-menu-item>
             <template v-else-if="!item.hidden" >
@@ -50,10 +50,10 @@
                 <component :is="item.meta.icon" />
               </el-icon>
               <template v-else>
-                {{ item.meta.title[0] }}
+                {{ t(item.meta.title)[0] }}
                 </template>
               <template #title>
-                {{ item.meta.title }}
+                {{ t(item.meta.title) }}
               </template>
             </el-menu-item>
             </template>
@@ -109,8 +109,10 @@
   import { useRoute, useRouter } from 'vue-router'
   import { useRouterStore } from '@/pinia/modules/router'
   import { useAppStore } from '@/pinia'
+  import { useI18n } from 'vue-i18n'
   import { storeToRefs } from 'pinia'
 
+  const { t } = useI18n()
   const appStore = useAppStore()
   const { device, config } = storeToRefs(appStore)
 

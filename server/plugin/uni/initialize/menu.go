@@ -24,7 +24,7 @@ func Menu(ctx context.Context) {
 				Hidden:    false,
 				Component: "view/routerHolder.vue",
 				Sort:      5,
-				Meta:      model.Meta{Title: "内容管理", Icon: "document"},
+				Meta:      model.Meta{Title: "plugins.uni.nav.cms", Icon: "document"},
 			},
 			children: []model.SysBaseMenu{
 				{
@@ -34,7 +34,7 @@ func Menu(ctx context.Context) {
 					Hidden:    false,
 					Component: "plugin/uni/cms/view/posts.vue",
 					Sort:      1,
-					Meta:      model.Meta{Title: "文章管理", Icon: "notebook"},
+					Meta:      model.Meta{Title: "plugins.uni.nav.posts", Icon: "notebook"},
 				},
 				{
 					ParentId:  0,
@@ -43,7 +43,7 @@ func Menu(ctx context.Context) {
 					Hidden:    false,
 					Component: "plugin/uni/cms/view/site.vue",
 					Sort:      2,
-					Meta:      model.Meta{Title: "站点设置", Icon: "setting"},
+					Meta:      model.Meta{Title: "plugins.uni.nav.site", Icon: "setting"},
 				},
 				{
 					ParentId:  0,
@@ -52,7 +52,7 @@ func Menu(ctx context.Context) {
 					Hidden:    false,
 					Component: "plugin/uni/cms/view/categories.vue",
 					Sort:      3,
-					Meta:      model.Meta{Title: "分类管理", Icon: "folder"},
+					Meta:      model.Meta{Title: "plugins.uni.nav.categories", Icon: "folder"},
 				},
 				{
 					ParentId:  0,
@@ -61,7 +61,7 @@ func Menu(ctx context.Context) {
 					Hidden:    false,
 					Component: "plugin/uni/cms/view/tags.vue",
 					Sort:      4,
-					Meta:      model.Meta{Title: "标签管理", Icon: "price-tag"},
+					Meta:      model.Meta{Title: "plugins.uni.nav.tags", Icon: "price-tag"},
 				},
 				{
 					ParentId:  0,
@@ -70,7 +70,7 @@ func Menu(ctx context.Context) {
 					Hidden:    false,
 					Component: "plugin/uni/cms/view/menus.vue",
 					Sort:      5,
-					Meta:      model.Meta{Title: "菜单管理", Icon: "menu"},
+					Meta:      model.Meta{Title: "plugins.uni.nav.menus", Icon: "menu"},
 				},
 				{
 					ParentId:  0,
@@ -79,7 +79,7 @@ func Menu(ctx context.Context) {
 					Hidden:    false,
 					Component: "plugin/uni/cms/view/media.vue",
 					Sort:      6,
-					Meta:      model.Meta{Title: "媒体库", Icon: "picture"},
+					Meta:      model.Meta{Title: "plugins.uni.nav.media", Icon: "picture"},
 				},
 			},
 		},
@@ -91,7 +91,7 @@ func Menu(ctx context.Context) {
 				Hidden:    false,
 				Component: "view/routerHolder.vue",
 				Sort:      6,
-				Meta:      model.Meta{Title: "运营管理", Icon: "data-line"},
+				Meta:      model.Meta{Title: "plugins.uni.nav.operations", Icon: "data-line"},
 			},
 			children: []model.SysBaseMenu{
 				{
@@ -101,7 +101,7 @@ func Menu(ctx context.Context) {
 					Hidden:    false,
 					Component: "plugin/uni/center/view/tenants.vue",
 					Sort:      0,
-					Meta:      model.Meta{Title: "租户管理", Icon: "avatar"},
+					Meta:      model.Meta{Title: "plugins.uni.nav.tenants", Icon: "avatar"},
 				},
 				{
 					ParentId:  0,
@@ -110,7 +110,7 @@ func Menu(ctx context.Context) {
 					Hidden:    false,
 					Component: "plugin/uni/core/view/sites.vue",
 					Sort:      0,
-					Meta:      model.Meta{Title: "站点管理", Icon: "grid"},
+					Meta:      model.Meta{Title: "plugins.uni.nav.sites", Icon: "grid"},
 				},
 			},
 		},
@@ -153,6 +153,8 @@ func ensureMenuGroup(group menuGroup) {
 			fmt.Printf("[uni] failed to create parent menu %s: %v\n", parentDef.Name, err)
 			return
 		}
+	} else if parentMenu.Meta.Title != parentDef.Meta.Title {
+		db.Model(&parentMenu).UpdateColumns(map[string]interface{}{"title": parentDef.Meta.Title})
 	}
 
 	// Ensure each child menu exists and is parented correctly
@@ -167,8 +169,15 @@ func ensureMenuGroup(group menuGroup) {
 			}
 		} else {
 			db.Where("name = ?", m.Name).First(&existing)
+			updates := map[string]interface{}{}
 			if existing.ParentId != parentMenu.ID {
-				db.Model(&existing).Update("parent_id", parentMenu.ID)
+				updates["parent_id"] = parentMenu.ID
+			}
+			if existing.Meta.Title != m.Meta.Title {
+				updates["title"] = m.Meta.Title
+			}
+			if len(updates) > 0 {
+				db.Model(&existing).UpdateColumns(updates)
 			}
 		}
 	}

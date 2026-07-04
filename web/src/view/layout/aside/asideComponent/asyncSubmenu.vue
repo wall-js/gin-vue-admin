@@ -15,13 +15,13 @@
         <el-icon v-if="routerInfo.meta.icon">
           <component :is="routerInfo.meta.icon" />
         </el-icon>
-        <span>{{ routerInfo.meta.title }}</span>
+        <span>{{ t(routerInfo.meta.title) }}</span>
       </div>
       <template v-else>
         <el-icon v-if="routerInfo.meta.icon">
           <component :is="routerInfo.meta.icon" />
         </el-icon>
-        <span>{{ routerInfo.meta.title }}</span>
+        <span>{{ t(routerInfo.meta.title) }}</span>
       </template>
     </template>
     <slot />
@@ -30,8 +30,10 @@
 
 <script setup>
   import { inject, computed } from 'vue'
+  import { useI18n } from 'vue-i18n'
   import { useAppStore } from '@/pinia'
   import { storeToRefs } from 'pinia'
+  const { t } = useI18n()
   const appStore = useAppStore()
   const { config } = storeToRefs(appStore)
 

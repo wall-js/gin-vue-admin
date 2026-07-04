@@ -17,19 +17,19 @@
         class="translate-btn"
         @click="openDialog"
       >
-        AI 翻译
+        {{ t('plugins.uni.localeSwitcher.aiTranslate') }}
       </el-button>
     </div>
 
     <!-- AI 翻译弹窗 -->
-    <el-dialog v-model="dialogVisible" title="AI 自动翻译" width="480px" :close-on-click-modal="false">
+    <el-dialog v-model="dialogVisible" :title="t('plugins.uni.localeSwitcher.aiTranslateTitle')" width="480px" :close-on-click-modal="false">
       <!-- 配置区：提交前显示 -->
       <template v-if="phase === 'idle' || phase === ''">
         <el-form label-width="100px">
-          <el-form-item label="源语种">
+          <el-form-item :label="t('plugins.uni.localeSwitcher.sourceLang')">
             <el-tag>{{ localeLabel(cmsLocaleStore.activeLocale) }}</el-tag>
           </el-form-item>
-          <el-form-item label="目标语种" required>
+          <el-form-item :label="t('plugins.uni.localeSwitcher.targetLang')" required>
             <el-checkbox-group v-model="targetLocales">
               <el-checkbox
                 v-for="loc in availableTargets"
@@ -43,7 +43,7 @@
           </el-form-item>
           <el-form-item>
             <el-checkbox v-model="force">
-              强制覆盖已有翻译
+              {{ t('plugins.uni.localeSwitcher.forceOverwrite') }}
             </el-checkbox>
           </el-form-item>
         </el-form>
@@ -54,10 +54,10 @@
         <div class="translate-progress">
           <div class="translate-progress-header">
             <span class="translate-progress-title">
-              <template v-if="phase === 'submitting'">提交任务中</template>
-              <template v-else-if="phase === 'translating'">正在翻译</template>
-              <template v-else-if="phase === 'done'">翻译完成</template>
-              <template v-else-if="phase === 'error'">翻译失败</template>
+              <template v-if="phase === 'submitting'">{{ t('plugins.uni.localeSwitcher.submitting') }}</template>
+              <template v-else-if="phase === 'translating'">{{ t('plugins.uni.localeSwitcher.translating') }}</template>
+              <template v-else-if="phase === 'done'">{{ t('plugins.uni.localeSwitcher.translateDone') }}</template>
+              <template v-else-if="phase === 'error'">{{ t('plugins.uni.localeSwitcher.translateFailed') }}</template>
             </span>
             <span v-if="phase === 'translating' && totalCount > 0" class="translate-progress-count">
               {{ translatedCount }}/{{ totalCount }}
@@ -74,7 +74,7 @@
       </template>
 
       <template #footer>
-        <el-button @click="dialogVisible = false" :disabled="translateLoading">取消</el-button>
+        <el-button @click="dialogVisible = false" :disabled="translateLoading">{{ t('plugins.uni.cancel') }}</el-button>
         <el-button
           v-if="phase === 'idle' || phase === '' || phase === 'error'"
           type="primary"
@@ -82,7 +82,7 @@
           :loading="translateLoading"
           :disabled="targetLocales.length === 0"
         >
-          开始翻译
+          {{ t('plugins.uni.localeSwitcher.startTranslate') }}
         </el-button>
       </template>
     </el-dialog>
@@ -91,6 +91,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { MagicStick } from '@element-plus/icons-vue'
 import { useCmsLocaleStore } from '../store/cmsLocale.js'
 import { useTranslation } from '../composables/useTranslation.js'
@@ -108,6 +109,7 @@ const props = defineProps({
 
 const emit = defineEmits(['translated'])
 
+const { t } = useI18n()
 const cmsLocaleStore = useCmsLocaleStore()
 
 const loading = computed(() => cmsLocaleStore.loading)

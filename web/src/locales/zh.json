@@ -118,7 +118,9 @@
     "richtext": {
       "importCss": "引入 css",
       "placeholder": "请输入内容...",
-      "destroyEditor": "组件销毁时，也及时销毁编辑器"
+      "destroyEditor": "组件销毁时，也及时销毁编辑器",
+      "imageUploadFailed": "图片上传失败",
+      "networkError": "网络错误"
     },
     "charts": {
       "referenceNote": "本组件参考 arco-pro 的实现"
@@ -262,10 +264,10 @@
     "adminPassword": "管理员密码",
     "adminPasswordNote": "admin账号的默认密码",
     "adminPasswordLenNote": "密码长度不能小于6位",
-    "configComplete" : "配置完成",
+    "configComplete": "配置完成",
     "dbInitNote": "已经完成基础数据库初始化！建议先进行编辑器AI助手配置，以获得更好的开发体验。",
     "viewAIConfigDocs": "查看AI配置文档",
-    "configLater" : "稍后配置"
+    "configLater": "稍后配置"
   },
   "layout": {
     "header": {
@@ -392,102 +394,6 @@
       "sendEmail": "发送邮件",
       "sendSuccess": "发送成功",
       "sentSuccessPleaseCheck": "发送成功,请查收"
-    },
-    "uni": {
-      "search": "搜索",
-      "reset": "重置",
-      "edit": "编辑",
-      "delete": "删除",
-      "submit": "提交",
-      "cancel": "取消",
-      "createSuccess": "创建成功",
-      "updateSuccess": "更新成功",
-      "deleteSuccess": "删除成功",
-      "deleteConfirm": "确定要删除吗？",
-      "deleteBatchConfirm": "确定要删除选中项吗？",
-      "warning": "提示",
-      "operations": "操作",
-      "console": {
-        "siteName": "站点名称",
-        "domain": "域名",
-        "status": "状态",
-        "active": "启用",
-        "inactive": "停用",
-        "createdAt": "创建时间",
-        "createSite": "创建站点",
-        "managePages": "管理页面",
-        "managePosts": "管理文章",
-        "description": "描述",
-        "enterSiteNameNote": "请输入站点名称",
-        "enterDomainNote": "请输入域名",
-        "deleteConfirm": "确定要删除此站点吗？",
-        "createSuccess": "站点创建成功",
-        "deleteSuccess": "站点删除成功"
-      },
-      "cms": {
-        "search": "搜索",
-        "reset": "重置",
-        "edit": "编辑",
-        "delete": "删除",
-        "submit": "提交",
-        "cancel": "取消",
-        "createSuccess": "创建成功",
-        "updateSuccess": "更新成功",
-        "deleteSuccess": "删除成功",
-        "deleteConfirm": "确定要删除吗？",
-        "deleteBatchConfirm": "确定要删除选中项吗？",
-        "warning": "提示",
-        "operations": "操作",
-        "page": {
-          "title": "标题",
-          "slug": "别名",
-          "template": "模板",
-          "status": "状态",
-          "published": "已发布",
-          "draft": "草稿",
-          "create": "创建页面",
-          "edit": "编辑页面",
-          "publish": "发布",
-          "unpublish": "取消发布",
-          "deleteBatch": "批量删除",
-          "seoTitle": "SEO 标题",
-          "seoDescription": "SEO 描述",
-          "content": "内容",
-          "enterTitleNote": "请输入标题",
-          "enterSlugNote": "请输入别名",
-          "selectTemplateNote": "请选择模板",
-          "enterSeoTitleNote": "请输入 SEO 标题",
-          "selectStatusNote": "请选择状态",
-          "publishSuccess": "发布成功",
-          "unpublishSuccess": "取消发布成功"
-        },
-        "post": {
-          "title": "标题",
-          "category": "分类",
-          "tags": "标签",
-          "author": "作者",
-          "viewCount": "浏览量",
-          "status": "状态",
-          "published": "已发布",
-          "draft": "草稿",
-          "create": "创建文章",
-          "edit": "编辑文章",
-          "publish": "发布",
-          "unpublish": "取消发布",
-          "cover": "封面图",
-          "seoTitle": "SEO 标题",
-          "seoDescription": "SEO 描述",
-          "content": "内容",
-          "enterTitleNote": "请输入标题",
-          "enterContentNote": "请输入内容",
-          "selectCategoryNote": "请选择分类",
-          "selectTagsNote": "请选择标签",
-          "enterCoverUrlNote": "请输入封面图 URL",
-          "selectStatusNote": "请选择状态",
-          "publishSuccess": "发布成功",
-          "unpublishSuccess": "取消发布成功"
-        }
-      }
     }
   },
   "utils": {
@@ -509,8 +415,8 @@
     }
   },
   "view": {
-    "person": { 
-      "basicInfo": "基本信息", 
+    "person": {
+      "basicInfo": "基本信息",
       "accountPassword": "账号密码",
       "isSet": "已设置",
       "notSet": "未设置",
@@ -1220,7 +1126,7 @@
       },
       "autoCodeAdmin": {
         "structName": "结构体名",
-        "structDesc" : "结构体描述",
+        "structDesc": "结构体描述",
         "deleteHistoryConfirm": "此操作将删除本历史, 是否继续?",
         "notRolledBack": "未回滚",
         "reuse": "复用",
@@ -1411,7 +1317,7 @@
     "pressure": "压力",
     "numOfGroove": "沟槽数",
     "detectionData": "胎纹数据",
-    "detectionDataAverage": "平均数据", 
+    "detectionDataAverage": "平均数据",
     "calibrationData": "校准数据",
     "apperance": "外观",
     "pictures": "外观照片"
@@ -1423,6 +1329,5 @@
     "sender": "发信人",
     "received": "已查收",
     "operation": "操作"
-  
   }
 }
