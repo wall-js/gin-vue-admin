@@ -257,3 +257,27 @@ zap:
     file-only-modules:
         - http
         - sql
+iot:
+  db-type: influxdb
+  # 内嵌MQTT Broker的启停与配置已改由管理界面维护（IoT平台→Broker管理，存库iot_broker_config），不再在此配置
+  influxdb:
+    bucket: "iot"
+    org: "gva"
+    token: "gva-iot-token"
+    url: "http://127.0.0.1:8086"
+  # 外置MQTT客户端（可选，连接外部Broker用）
+  mqtt-client:
+    enable: false
+    client-id: ""
+    host: ""
+    password: ""
+    port: 0
+    topic: ""
+    username: ""
+  tdengine:
+    protocol: ws
+    host: localhost
+    port: 6041
+    username: root
+    password: taosdata
+    database: test
