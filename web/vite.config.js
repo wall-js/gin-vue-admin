@@ -55,6 +55,13 @@ export default ({ mode }) => {
           rewrite: (path) =>
             path.replace(new RegExp('^' + env.VITE_BASE_API), '')
         },
+        // SCADA反向代理前缀：由后端 ems 插件的 Golang 反代 (/scada/*) 二次转发到内部 SCADA 服务
+        // 注意：必须保留 /scada 前缀（不 rewrite），否则后端反代路由匹配不到；ws:true 支持 socket.io 实时通道
+        '/scada': {
+          target: `${env.VITE_BASE_PATH}:${env.VITE_SERVER_PORT}`, 
+          changeOrigin: true,
+          ws: true
+        },
         '/plugin': {
           // 需要代理的路径   例如 '/api'
           target: `https://plugin.gin-vue-admin.com/api/`, // 代理到 目标路径

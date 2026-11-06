@@ -27,7 +27,9 @@ func init() {
 // 安装插件时候自动注册的api数据请到下方法.Dictionary方法中实现并添加如下方法
 // initialize.Dictionary(ctx)
 func (p *plugin) Register(group *gin.Engine) {
-	ctx := context.Background() 
+	ctx := context.Background()
+	initialize.Viper() // 加载 ems 配置（含 scada 反代目标），必须在 Gorm/Router/Menu 之前
 	initialize.Gorm(ctx)
 	initialize.Router(group)
+	initialize.Menu(ctx)
 }
