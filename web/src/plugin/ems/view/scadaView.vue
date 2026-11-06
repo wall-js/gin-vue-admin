@@ -22,15 +22,19 @@ const route = useRoute()
 //   内部 SCADA 服务需配置 BASE_PATH=/scada，使其生成的静态资源与 socket.io 地址都在 /scada 下。
 const scadaBase = '/scada'
 
-// 组态画布由 Skill 按此设计尺寸生成。FUXA 不会等比缩放视图（官方 autoresize
-// 是 stretch 非等比），所以运行视图按原尺寸渲染后由本组件整体等比缩放。
-const DESIGN_WIDTH = 1920+7
-const DESIGN_HEIGHT = 1080+50
+// iframe 视口物理尺寸。FUXA 1.3.4-2890 的 div#container.home-container 是
+// overflow:auto，运行视图 SVG 固定 1920×1080、scrollHeight 恒为 1084，垂直滚动条
+// 占 7px；视口底部另有 46px 白色 #main-container。要让 FUXA 不出现滚动条：
+//   宽 ≥ 1920+7（抵消滚动条）、高 ≥ 1080+4+46（内容余量 + 白栏）→ 1927×1130。
+const IFRAME_W = 1920 + 7
+const IFRAME_H = 1080 + 50
 
-// FUXA 1.3.4-2890 的 dark-theme 下 body 背景仍是白色，视口底部固定留 46px 纯白
-// （1920x1080 / 1600x900 实测一致）。按「有效内容高度」缩放并用裁切容器挡掉它。
+// 缩放 / 裁切基准 = FUXA 的「有效内容尺寸」，不含滚动条余量与底部白栏。
+// 左上对齐时 clip 必须严格等于它，否则右侧会露出 7px 非内容区。
+// 这两个值与上面的 iframe 尺寸相互独立，改一个不要顺手改另一个。
 const BOTTOM_BLANK = 46
-const CONTENT_HEIGHT = DESIGN_HEIGHT - BOTTOM_BLANK
+const CANVAS_W = 1920
+const CANVAS_H = IFRAME_H - BOTTOM_BLANK // 1084 = 1080 内容 + 4 余量
 
 const stage = ref(null)
 const viewport = ref({ w: 0, h: 0 })
@@ -76,23 +80,19 @@ const scale = computed(() => {
   if (!isRuntime.value || !ready.value) return 1
   return (
     Math.min(
-      viewport.value.w / DESIGN_WIDTH,
-      viewport.value.h / CONTENT_HEIGHT
+      viewport.value.w / CANVAS_W,
+      viewport.value.h / CANVAS_H
     ) || 1
   )
 })
 
-// 裁切窗口 = 缩放后的「有效内容」尺寸，居中放置。
-// iframe 视觉高度比它多出 BOTTOM_BLANK * scale，正好是那条白边，被 overflow 裁掉。
+// 裁切窗口 = 缩放后的有效内容尺寸，固定左上对齐（不居中，由 CSS 的 top/left:0 保证）。
+// iframe 视觉上多出的右侧 7*s（滚动条余量）与底部 46*s（白栏）落在窗口外，被 overflow 裁掉。
 const clipStyle = computed(() => {
   if (!isRuntime.value) return { inset: '0' }
-  const w = DESIGN_WIDTH * scale.value
-  const h = CONTENT_HEIGHT * scale.value
   return {
-    width: `${w}px`,
-    height: `${h}px`,
-    // left: `${Math.max(0, (viewport.value.w - w) / 2)}px`,
-    // top: `${Math.max(0, (viewport.value.h - h) / 2)}px`
+    width: `${CANVAS_W * scale.value}px`,
+    height: `${CANVAS_H * scale.value}px`
   }
 })
 
@@ -101,8 +101,8 @@ const frameStyle = computed(() => {
     return { width: '100%', height: '100%' }
   }
   return {
-    width: `${DESIGN_WIDTH}px`,
-    height: `${DESIGN_HEIGHT}px`,
+    width: `${IFRAME_W}px`,
+    height: `${IFRAME_H}px`,
     transform: `scale(${scale.value})`,
     transformOrigin: 'top left'
   }
@@ -119,6 +119,8 @@ const frameStyle = computed(() => {
 
 .scada-clip {
   position: absolute;
+  top: 0;
+  left: 0;
   overflow: hidden;
   background: #07121d;
 }
@@ -138,5 +140,4 @@ const frameStyle = computed(() => {
 :global(#gva-base-load-dom:has(.scada-stage)) {
   position: relative;
 }
- 
 </style>
