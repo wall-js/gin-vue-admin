@@ -46,7 +46,7 @@
     </div>
 
     <div class="ml-2 flex shrink-0 items-center gap-2">
-      <el-tooltip effect="dark" content="查看授权版演示站" placement="bottom">
+      <!-- <el-tooltip effect="dark" content="查看授权版演示站" placement="bottom">
         <el-button
           type="primary"
           plain
@@ -58,7 +58,7 @@
           <el-icon><Monitor /></el-icon>
           <span v-if="!isMobile" class="ml-1">授权版演示</span>
         </el-button>
-      </el-tooltip>
+      </el-tooltip> -->
       <tools />
       <el-dropdown>
         <div class="flex justify-center items-center h-full w-full">

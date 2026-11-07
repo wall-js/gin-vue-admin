@@ -49,7 +49,7 @@
                   </div>
                 </div>
 
-                <div
+                <!-- <div
                   class="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-8 text-gray-500 dark:text-gray-400"
                 >
                   <div class="flex items-center gap-2">
@@ -64,7 +64,7 @@
                     <el-icon><user /></el-icon>
                     <span>技术部·前端事业群</span>
                   </div>
-                </div>
+                </div> -->
               </div>
 
               <div class="flex gap-4 mt-4">
