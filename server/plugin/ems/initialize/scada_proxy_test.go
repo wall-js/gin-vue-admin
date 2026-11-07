@@ -48,7 +48,8 @@ func TestScadaProxyKeepsBasePath(t *testing.T) {
 		wantQuery string
 	}{
 		{"root", "/scada/", "/scada/", ""},
-		{"embed-view", "/scada/?viewName=Water&embedded=true", "/scada/", "viewName=Water&embedded=true"},
+		// 中文视图名由前端 encodeURIComponent 一次；反代必须原样透传，不得二次编码或剥离
+		{"embed-view-chinese", "/scada/?viewName=%E7%94%A8%E6%B0%B4%E7%9B%91%E6%8E%A7&embedded=true", "/scada/", "viewName=%E7%94%A8%E6%B0%B4%E7%9B%91%E6%8E%A7&embedded=true"},
 		{"gauge-js", "/scada/assets/lib/gauge/gauge.js", "/scada/assets/lib/gauge/gauge.js", ""},
 		{"jquery-js", "/scada/assets/lib/svgeditor/jquery-plugin.min.js", "/scada/assets/lib/svgeditor/jquery-plugin.min.js", ""},
 		{"nouislider-js", "/scada/assets/lib/nouislider/nouislider.min.js", "/scada/assets/lib/nouislider/nouislider.min.js", ""},

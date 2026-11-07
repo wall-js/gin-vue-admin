@@ -20,11 +20,13 @@ func Menu(ctx context.Context) {
 			Meta:      model.Meta{Title: "组态监控", Icon: "monitor"},
 		},
 		// [1..n] 子菜单：共用单一模板，仅靠 viewName 参数区分画面（数据驱动）
-		scadaMenu("overview", "scadaOverview", "能源总览", "data-board", "Overview"),
-		scadaMenu("power", "scadaPower", "配电监控", "lightning", "Power"),
-		scadaMenu("water", "scadaWater", "用水监控", "water", "Water"),
-		scadaMenu("hvac", "scadaHvac", "暖通空调", "sunny", "HVAC"),
-		scadaMenu("alarms", "scadaAlarms", "告警看板", "warning", "Alarms"),
+		// viewName 必须与 FUXA view.name 逐字一致；视图名统一中文，且与菜单标题相同。
+		// 单一数据源：.workbuddy/skills/fuxa-industrial-iot-skill/examples/uni-iot-demo/view-names.json
+		scadaMenu("overview", "scadaOverview", "能源总览", "data-board", "能源总览"),
+		scadaMenu("power", "scadaPower", "配电监控", "lightning", "配电监控"),
+		scadaMenu("water", "scadaWater", "用水监控", "water", "用水监控"),
+		scadaMenu("hvac", "scadaHvac", "暖通空调", "sunny", "暖通空调"),
+		scadaMenu("alarms", "scadaAlarms", "告警看板", "warning", "告警看板"),
 		// 组态编辑：默认 Hidden，仅超管手动授权可见（仍用同一模板，靠 editor 参数）
 		model.SysBaseMenu{
 			Path:      "editor",
