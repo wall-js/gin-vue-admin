@@ -18,7 +18,7 @@ func Viper() {
 	}
 	// 配置下发接口依赖此值；漏配时及早暴露，避免前端只看到一个空 iframe。
 	if plugin.Config.Scada.Base == "" {
-		zap.L().Warn("ems.scada.base 未配置，/ems/config 将返回失败；请在 config.yaml 中设置浏览器可访问的 FUXA 地址")
+		zap.L().Warn("ems.scada.base 未配置，/ems/config 将返回失败；请在 config.yaml 中设置浏览器可访问的地址")
 		return
 	}
 	zap.L().Info("SCADA 独立服务地址已加载", zap.String("base", plugin.Config.Scada.Base))
