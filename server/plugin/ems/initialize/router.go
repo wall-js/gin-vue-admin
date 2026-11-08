@@ -1,32 +1,19 @@
 package initialize
 
 import (
-	"go.uber.org/zap"
-
-	"github.com/flipped-aurora/gin-vue-admin/server/global"
-	"github.com/flipped-aurora/gin-vue-admin/server/middleware"
-	emsplugin "github.com/flipped-aurora/gin-vue-admin/server/plugin/ems/plugin"
+	emsApi "github.com/flipped-aurora/gin-vue-admin/server/plugin/ems/api"
 	"github.com/gin-gonic/gin"
 )
 
-func Router(engine *gin.Engine) {
-	public := engine.Group(global.GVA_CONFIG.System.RouterPrefix).Group("")
-	public.Use()
-	private := engine.Group(global.GVA_CONFIG.System.RouterPrefix).Group("")
-	private.Use(middleware.JWTAuth()).Use(middleware.CasbinHandler())
-
-	// SCADA 反向代理：前端通过 GVA 同源的 /scada/* 访问，无需任何前端环境变量。
-	// 后端将 /scada/* 转发到内部 SCADA 服务，由 Golang 完成，与环境/部署形态无关。
-	scadaTarget := emsplugin.Config.Scada.Target
-	if scadaTarget == "" {
-		scadaTarget = "http://scada:1881"
-	}
-	scadaProxy, err := newScadaProxy(scadaTarget)
-	if err != nil {
-		zap.L().Error("SCADA 反向代理初始化失败: " + err.Error())
-		return
-	}
-	// 挂在引擎根路径，不依赖 RouterPrefix，前端写死 /scada 即可（同源）
-	engine.Any("/scada", scadaProxy.ServeGin)
-	engine.Any("/scada/*action", scadaProxy.ServeGin)
+// Router 注册 ems 插件的后端路由。
+//
+// SCADA(FUXA) 已改为独立服务部署：GVA 不注册 /scada/* 反向代理，不转发任何
+// SCADA 流量。这里只提供 ems 模块的通用配置下发接口 /ems/config，
+// 前端拿到 data.scada.base 后直连 FUXA（iframe / REST / socket.io）。
+// 后续新增 ems 前端配置往 data 里加域即可，不必再开新接口。
+//
+// 注意 Vite 与 nginx 都会把 /api 前缀 rewrite 掉，因此前端请求
+// /api/ems/config 时，后端只需注册 /ems/config。
+func Router(group *gin.Engine) {
+	group.GET("/ems/config", emsApi.Api.GetConfig)
 }

@@ -28,7 +28,7 @@ func init() {
 // initialize.Dictionary(ctx)
 func (p *plugin) Register(group *gin.Engine) {
 	ctx := context.Background()
-	initialize.Viper() // 加载 ems 配置（含 scada 反代目标），必须在 Gorm/Router/Menu 之前
+	initialize.Viper() // 加载 ems 配置，必须在 Gorm/Router/Menu 之前
 	initialize.Gorm(ctx)
 	initialize.Router(group)
 	initialize.Menu(ctx)

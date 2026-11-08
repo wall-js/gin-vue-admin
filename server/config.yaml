@@ -263,9 +263,8 @@ zap:
     log-in-console: true
     retention-day: -1
 
-# SCADA连接配置：golang 反向代理 (/scada/*) 转发到该地址
-# dev 模式 gva-server 本地运行，经 127.0.0.1:1881 访问 docker 内的 scada 容器
-# 生产若 gva-server 同 docker 网络，删除此段即可使用代码默认值 http://scada:1881
+# SCADA独立服务接入配置
+# 生产改这里并重启 gva-server 即可，无需重新打包前端。
 ems:
     scada:
-        target: http://127.0.0.1:1881
+        base: http://127.0.0.1:1881

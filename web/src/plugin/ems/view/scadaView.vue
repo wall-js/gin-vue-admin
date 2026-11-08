@@ -1,6 +1,12 @@
 <template>
   <div ref="stage" class="scada-stage">
-    <div v-if="src && ready" class="scada-clip" :style="clipStyle">
+    <div v-if="configError" class="scada-error">
+      <p class="scada-error-title">SCADA 地址获取失败</p>
+      <p class="scada-error-detail">{{ configError }}</p>
+      <p class="scada-error-hint">请在后端 config.yaml 配置 ems.scada.base 并重启 gva-server</p>
+      <button class="scada-error-retry" @click="loadScadaBase(true)">重试</button>
+    </div>
+    <div v-else-if="src && ready" class="scada-clip" :style="clipStyle">
       <iframe
         :key="src"
         :src="src"
@@ -14,13 +20,26 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { buildScadaUrl, getScadaBase } from '../api/emsConfig.js'
 
 const route = useRoute()
 
-// SCADA 入口：GVA 同源的 Golang 反向代理路径，写死、无需任何前端环境变量。
-//   后端 ems 插件将 /scada/* 转发到内部 SCADA 服务（见 initialize/scada_proxy.go）。
-//   内部 SCADA 服务需配置 BASE_PATH=/scada，使其生成的静态资源与 socket.io 地址都在 /scada 下。
-const scadaBase = '/scada'
+// SCADA 入口：FUXA 地址来自 ems 模块通用配置接口 GET /api/ems/config
+// （data.scada.base，后端 config.yaml 的 ems.scada.base）。
+// 前端不硬编码、不读 VITE_*、不在构建期注入；GVA 不反向代理，iframe 直连 FUXA 根路径。
+// 换地址只需改后端配置并重启 gva-server，无需重新打包前端。
+const scadaBase = ref('')
+const configError = ref('')
+
+async function loadScadaBase(force = false) {
+  configError.value = ''
+  try {
+    scadaBase.value = await getScadaBase({ force })
+  } catch (err) {
+    scadaBase.value = ''
+    configError.value = err?.message || String(err)
+  }
+}
 
 // iframe 视口物理尺寸。FUXA 1.3.4-2890 的 div#container.home-container 是
 // overflow:auto，运行视图 SVG 固定 1920×1080、scrollHeight 恒为 1084，垂直滚动条
@@ -50,25 +69,31 @@ onMounted(() => {
     if (width > 0 && height > 0) viewport.value = { w: width, h: height }
   })
   observer.observe(stage.value)
+  // 地址是运行时异步下发的，拿到之前 src 为空，不渲染 iframe。
+  loadScadaBase()
 })
 onBeforeUnmount(() => observer?.disconnect())
 
 // 单一业务模板：根据菜单参数渲染不同 SCADA 画面
-//   ?editor=true   → SCADA 编辑器（/scada/editor）
-//   ?home=true     → SCADA 首页（/scada/home，画板组件）
-//   ?viewName=XXX  → SCADA 运行视图（/scada/?viewName=XXX）
-// FUXA 1.3.4 只识别 viewName / name / debug 三个查询参数，不存在 embedded 参数；
+//   ?editor=true   → SCADA 编辑器（<base>/editor）
+//   ?home=true     → SCADA 首页（<base>/home，画板组件）
+//   ?viewName=XXX  → SCADA 运行视图（<base>/?viewName=XXX）
+// FUXA 只识别 viewName / name / debug 三个查询参数，不存在 embedded 参数；
 // 隐藏左下角导航需在项目 hmi.layout.hidenavigation 中配置。
 const src = computed(() => {
+  const base = scadaBase.value
+  if (!base) return ''
   if (route.query.home) {
-    return `${scadaBase}/home`
+    return buildScadaUrl(base, '/home')
   }
   if (route.query.editor) {
-    return `${scadaBase}/editor`
+    return buildScadaUrl(base, '/editor')
   }
   const view = route.query.viewName
   if (!view) return ''
-  return `${scadaBase}/?viewName=${encodeURIComponent(view)}`
+  return buildScadaUrl(base, '/', {
+    viewName: Array.isArray(view) ? view[0] : view
+  })
 })
 
 // 编辑器与首页保持原生自适应（缩放后控件太小不便操作），只缩放运行视图。
@@ -133,6 +158,45 @@ const frameStyle = computed(() => {
   border: 0;
   background: #07121d;
   color-scheme: dark;
+}
+
+.scada-error {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  max-width: 560px;
+  padding: 16px 20px;
+  border: 1px solid #7a3b3b;
+  border-radius: 6px;
+  background: #1c1113;
+  color: #f0c9c9;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.scada-error-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.scada-error-detail {
+  margin: 0;
+  word-break: break-all;
+}
+
+.scada-error-hint {
+  margin: 8px 0 12px;
+  color: #b79a9a;
+}
+
+.scada-error-retry {
+  padding: 4px 14px;
+  border: 1px solid #7a3b3b;
+  border-radius: 4px;
+  background: transparent;
+  color: #f0c9c9;
+  cursor: pointer;
 }
 
 /* 仅在本组件挂载于 GVA 内容区时生效；切到别的页面后 :has() 不再匹配，
