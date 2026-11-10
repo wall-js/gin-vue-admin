@@ -27,17 +27,22 @@ func Menu(ctx context.Context) {
 		scadaMenu("water", "scadaWater", "用水监控", "water", "用水监控"),
 		scadaMenu("hvac", "scadaHvac", "暖通空调", "sunny", "暖通空调"),
 		scadaMenu("alarms", "scadaAlarms", "告警看板", "warning", "告警看板"),
-		// 组态编辑：默认 Hidden，仅超管手动授权可见（仍用同一模板，靠 editor 参数）
+		// 视图编辑：默认 Hidden，仅超管手动授权可见（仍用同一模板，靠 page 参数）
 		model.SysBaseMenu{
 			Path:      "editor",
 			Name:      "scadaEditor",
 			Component: scadaViewComponent,
 			Hidden:    true,
-			Meta:      model.Meta{Title: "组态编辑", Icon: "setting", KeepAlive: false},
+			Meta:      model.Meta{Title: "视图编辑", Icon: "setting", KeepAlive: false},
 			Parameters: []model.SysBaseMenuParameter{
-				{Type: "query", Key: "editor", Value: "true"},
+				{Type: "query", Key: "page", Value: "editor"},
 			},
 		},
+		// FUXA 独立页面菜单：靠 page 参数指定页面名，需同步登记到前端 SCADA_PAGES 白名单
+		scadaPageMenu("logs", "scadaLogs", "组态日志", "document", "logs"),
+		scadaPageMenu("flows", "scadaFlows", "流程编辑", "tools", "flows"),
+		scadaPageMenu("messages", "scadaMessages", "告警设置", "warn", "messages"),
+		scadaPageMenu("notifications", "scadaNotifications", "通知设置", "message", "notifications"),
 	)
 }
 
@@ -50,6 +55,22 @@ func scadaMenu(path, name, title, icon, viewName string) model.SysBaseMenu {
 		Meta:      model.Meta{Title: title, Icon: icon, KeepAlive: true},
 		Parameters: []model.SysBaseMenuParameter{
 			{Type: "query", Key: "viewName", Value: viewName},
+		},
+	}
+}
+
+// scadaPageMenu 生成一条 FUXA 独立页面菜单（参数化、单一模板）。
+// page 是 FUXA 页面名（不带前导斜杠，由前端 buildScadaUrl 补齐），
+// 最终地址 = ems.scada.base + "/" + page，不硬编码域名/端口。
+// 配置类页面 KeepAlive=false，避免多个 FUXA 实例常驻。
+func scadaPageMenu(path, name, title, icon, page string) model.SysBaseMenu {
+	return model.SysBaseMenu{
+		Path:      path,
+		Name:      name,
+		Component: scadaViewComponent,
+		Meta:      model.Meta{Title: title, Icon: icon, KeepAlive: false},
+		Parameters: []model.SysBaseMenuParameter{
+			{Type: "query", Key: "page", Value: page},
 		},
 	}
 }

@@ -46,7 +46,8 @@ async function loadScadaBase(force = false) {
 // 占 7px；视口底部另有 46px 白色 #main-container。要让 FUXA 不出现滚动条：
 //   宽 ≥ 1920+7（抵消滚动条）、高 ≥ 1080+4+46（内容余量 + 白栏）→ 1927×1130。
 const IFRAME_W = 1920 + 7
-const IFRAME_H = 1080 + 50
+// const IFRAME_H = 1080 + 50
+const IFRAME_H = 1176  
 
 // 缩放 / 裁切基准 = FUXA 的「有效内容尺寸」，不含滚动条余量与底部白栏。
 // 左上对齐时 clip 必须严格等于它，否则右侧会露出 7px 非内容区。
@@ -74,32 +75,48 @@ onMounted(() => {
 })
 onBeforeUnmount(() => observer?.disconnect())
 
-// 单一业务模板：根据菜单参数渲染不同 SCADA 画面
-//   ?editor=true   → SCADA 编辑器（<base>/editor）
-//   ?home=true     → SCADA 首页（<base>/home，画板组件）
-//   ?viewName=XXX  → SCADA 运行视图（<base>/?viewName=XXX）
+// 单一业务模板：根据菜单参数渲染不同 SCADA 页面
+//   ?page=home           → SCADA 首页（<base>/home）
+//   ?page=editor         → 视图编辑（<base>/editor）
+//   ?page=logs           → 组态日志（<base>/logs）
+//   ?page=flows          → 流程编辑（<base>/flows）
+//   ?page=messages       → 告警设置（<base>/messages）
+//   ?page=notifications  → 通知设置（<base>/notifications）
+//   ?viewName=XXX        → SCADA 运行视图（<base>/?viewName=XXX）
+// 所有独立页面统一走 page 参数；SCADA_PAGES 既是白名单，也是
+// 「菜单参数值 → FUXA 页面名」的映射表（不带前导斜杠，由 buildScadaUrl 补齐）。
+// 新增页面只需在这里加一行，并在 menu.go 用 scadaPageMenu 注册对应菜单，
+// 无需改动下面的分支逻辑。
+// 白名单是安全边界：避免 query 被篡改后把 iframe 指向任意外部地址（开放重定向）。
 // FUXA 只识别 viewName / name / debug 三个查询参数，不存在 embedded 参数；
 // 隐藏左下角导航需在项目 hmi.layout.hidenavigation 中配置。
+const SCADA_PAGES = new Map([
+  ['home', 'home'],
+  ['editor', 'editor'],
+  ['logs', 'logs'],
+  ['flows', 'flows'],
+  ['messages', 'messages'],
+  ['notifications', 'notifications']
+])
+
+// 同名 query 参数重复出现时 vue-router 会给数组，统一取第一项。
+const first = (v) => (Array.isArray(v) ? v[0] : v)
+
 const src = computed(() => {
   const base = scadaBase.value
   if (!base) return ''
-  if (route.query.home) {
-    return buildScadaUrl(base, '/home')
+  const page = first(route.query.page)
+  if (page) {
+    const path = SCADA_PAGES.get(page)
+    return path ? buildScadaUrl(base, path) : ''
   }
-  if (route.query.editor) {
-    return buildScadaUrl(base, '/editor')
-  }
-  const view = route.query.viewName
+  const view = first(route.query.viewName)
   if (!view) return ''
-  return buildScadaUrl(base, '/', {
-    viewName: Array.isArray(view) ? view[0] : view
-  })
+  return buildScadaUrl(base, '/', { viewName: view })
 })
 
-// 编辑器与首页保持原生自适应（缩放后控件太小不便操作），只缩放运行视图。
-const isRuntime = computed(
-  () => !route.query.editor && !route.query.home && !!route.query.viewName
-)
+// 只有运行视图需要按 1920×1080 缩放裁切；所有 page 页面保持原生自适应。
+const isRuntime = computed(() => !route.query.page && !!route.query.viewName)
 
 const scale = computed(() => {
   if (!isRuntime.value || !ready.value) return 1
