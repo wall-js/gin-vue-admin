@@ -12,7 +12,7 @@ import UnoCSS from '@unocss/vite'
 
 // @see https://cn.vitejs.dev/config/
 export default ({ mode }) => {
-  AddSecret('*.unileaper.com','50944707bf84286af26116ef0ac21ae563d323370ca593f533ddc36f478a032b7c8d21ffa120ce3712582c4930a05ce5')
+  AddSecret('*.unileaper.com','302f45e7168138e0fd318dec9a30199587db93d90575edffa9dca5937aed9d5de58955d60fc54e72e8dbb48d23f8b4bc')
   const env = loadEnv(mode, process.cwd())
   viteLogo(env)
 
