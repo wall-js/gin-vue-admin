@@ -92,5 +92,6 @@
   "/src/plugin/auto/view/pubPlug/pubPlug.vue": "PubPlug",
   "/src/plugin/auto/view/skills/index.vue": "Index",
   "/src/plugin/email/view/index.vue": "Email",
+  "/src/plugin/ems/view/digitalTwinView.vue": "DigitalTwinView",
   "/src/plugin/ems/view/scadaView.vue": "ScadaView"
 }

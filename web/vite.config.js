@@ -12,7 +12,7 @@ import UnoCSS from '@unocss/vite'
 
 // @see https://cn.vitejs.dev/config/
 export default ({ mode }) => {
-  AddSecret('')
+  AddSecret('*.unileaper.com','50944707bf84286af26116ef0ac21ae563d323370ca593f533ddc36f478a032b7c8d21ffa120ce3712582c4930a05ce5')
   const env = loadEnv(mode, process.cwd())
   viteLogo(env)
 
@@ -45,6 +45,7 @@ export default ({ mode }) => {
       // 如果使用docker-compose开发模式，设置为false
       open: true,
       port: Number(env.VITE_CLI_PORT),
+      allowedHosts: ['localhost', '127.0.0.1', 'iot.unileaper.com'],
       proxy: {
         // 把key的路径代理到target位置
         // detail: https://cli.vuejs.org/config/#devserver-proxy
